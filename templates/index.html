@@ -1,463 +1,873 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HS Code Classifier</title>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <title>HS Code Classifier — Harbour</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <style>
+        /* ============================================
+           Harbour Design System — Dark-first tokens
+           ============================================ */
         :root {
-            --bg: #0f1117;
-            --surface: #1a1d27;
-            --surface2: #242836;
-            --border: #2d3348;
-            --text: #e4e8f1;
-            --text-dim: #8b95b0;
-            --accent: #6c63ff;
-            --accent-glow: rgba(108, 99, 255, 0.3);
-            --success: #2ecc71;
-            --warning: #f1c40f;
-            --danger: #e74c3c;
+            /* Background hierarchy */
+            --h-bg:          #0a0a0a;
+            --h-bg-raised:   rgba(255,255,255,0.02);
+            --h-bg-surface:  rgba(255,255,255,0.04);
+            --h-bg-hover:    rgba(255,255,255,0.06);
+            --h-bg-active:   rgba(255,255,255,0.08);
+
+            /* Borders */
+            --h-border:      rgba(255,255,255,0.05);
+            --h-border-mid:  rgba(255,255,255,0.08);
+            --h-border-strong: rgba(255,255,255,0.12);
+
+            /* Text hierarchy */
+            --h-text:        #ffffff;
+            --h-text-2:      rgba(255,255,255,0.70);
+            --h-text-3:      rgba(255,255,255,0.50);
+            --h-text-4:      rgba(255,255,255,0.30);
+            --h-text-5:      rgba(255,255,255,0.20);
+
+            /* Accent — Harbour blue-cyan */
+            --h-accent:      #3b82f6;
+            --h-accent-soft: rgba(59,130,246,0.15);
+            --h-accent-glow: rgba(59,130,246,0.25);
+
+            /* Semantic */
+            --h-emerald:     #10b981;
+            --h-emerald-soft:rgba(16,185,129,0.15);
+            --h-amber:       #f59e0b;
+            --h-amber-soft:  rgba(245,158,11,0.15);
+            --h-red:         #ef4444;
+            --h-red-soft:    rgba(239,68,68,0.15);
+            --h-purple:      #8b5cf6;
+            --h-purple-soft: rgba(139,92,246,0.15);
+            --h-pink:        #ec4899;
+            --h-cyan:        #06b6d4;
+
+            /* Chart palette (oklch-inspired, mapped to hex) */
+            --h-chart-1:     #3b82f6;
+            --h-chart-2:     #10b981;
+            --h-chart-3:     #f59e0b;
+            --h-chart-4:     #8b5cf6;
+            --h-chart-5:     #ec4899;
+
+            /* Layout */
+            --h-radius:      0.625rem;
+            --h-radius-lg:   0.875rem;
+            --h-radius-xl:   1.125rem;
+            --h-radius-full: 9999px;
+            --h-shadow:      0 1px 2px rgba(0,0,0,0.4);
+
+            /* Font */
+            --h-font:        'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --h-mono:        'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        
+        /* ============================================
+           Reset & Base
+           ============================================ */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
         body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
+            font-family: var(--h-font);
+            background: var(--h-bg);
+            color: var(--h-text);
             line-height: 1.6;
+            min-height: 100vh;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            font-feature-settings: "rlig" 1, "calt" 1;
+            overflow-x: hidden;
         }
 
+        /* ============================================
+           Header
+           ============================================ */
         .header {
-            background: linear-gradient(135deg, var(--surface) 0%, var(--surface2) 100%);
-            border-bottom: 1px solid var(--border);
-            padding: 1.5rem 2rem;
             display: flex;
             align-items: center;
             gap: 1rem;
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--h-border);
+            background: var(--h-bg);
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            backdrop-filter: blur(12px);
         }
 
-        .header h1 {
-            font-size: 1.5rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #6c63ff, #48c6ef);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+        .header-logo {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
         }
 
-        .header .badge {
-            background: var(--accent);
-            color: white;
-            font-size: 0.7rem;
-            padding: 0.2rem 0.6rem;
-            border-radius: 999px;
+        .header-logo h1 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--h-text);
+            letter-spacing: -0.01em;
+        }
+
+        .header-badge {
+            font-size: 0.625rem;
             font-weight: 600;
             letter-spacing: 0.05em;
+            text-transform: uppercase;
+            padding: 0.2rem 0.5rem;
+            border-radius: var(--h-radius-full);
+            background: var(--h-accent-soft);
+            color: var(--h-accent);
         }
 
-        .header .stats {
+        .header-stats {
             margin-left: auto;
-            font-size: 0.8rem;
-            color: var(--text-dim);
+            font-size: 0.75rem;
+            color: var(--h-text-4);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
         }
 
-        .main-container {
+        .header-stats .stat-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.25rem 0.5rem;
+            background: var(--h-bg-surface);
+            border-radius: var(--h-radius-full);
+            font-family: var(--h-mono);
+            font-size: 0.6875rem;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-left: 1rem;
+        }
+
+        /* ============================================
+           Layout
+           ============================================ */
+        .app-layout {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
-            padding: 1.5rem 2rem;
-            max-width: 1600px;
-            margin: 0 auto;
-            min-height: calc(100vh - 80px);
+            grid-template-columns: 420px 1fr;
+            min-height: calc(100vh - 53px);
         }
 
-        .panel {
-            background: var(--surface);
-            border: 1px solid var(--border);
-            border-radius: 12px;
+        .sidebar-panel {
+            border-right: 1px solid var(--h-border);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .main-panel {
+            display: flex;
+            flex-direction: column;
             overflow: hidden;
         }
 
-        .panel-header {
-            padding: 1rem 1.5rem;
-            border-bottom: 1px solid var(--border);
-            font-weight: 600;
-            font-size: 0.9rem;
+        /* ============================================
+           Cards
+           ============================================ */
+        .card {
+            background: var(--h-bg-raised);
+            border: 1px solid var(--h-border);
+            border-radius: var(--h-radius-lg);
+            overflow: hidden;
+        }
+
+        .card-header {
+            padding: 0.875rem 1.25rem;
+            border-bottom: 1px solid var(--h-border);
             display: flex;
             align-items: center;
             gap: 0.5rem;
         }
 
-        .panel-body {
-            padding: 1.5rem;
-        }
-
-        /* Input Section */
-        .input-section {
-            grid-column: 1;
-        }
-
-        .search-box {
-            position: relative;
-        }
-
-        .search-box textarea {
-            width: 100%;
-            padding: 1rem 1.2rem;
-            background: var(--surface2);
-            border: 2px solid var(--border);
-            border-radius: 10px;
-            color: var(--text);
-            font-size: 1rem;
-            font-family: inherit;
-            resize: vertical;
-            min-height: 100px;
-            transition: border-color 0.2s;
-        }
-
-        .search-box textarea:focus {
-            outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px var(--accent-glow);
-        }
-
-        .search-box textarea::placeholder {
-            color: var(--text-dim);
-        }
-
-        .btn {
-            padding: 0.7rem 1.5rem;
-            border: none;
-            border-radius: 8px;
-            font-size: 0.9rem;
+        .card-header h2 {
+            font-size: 0.8125rem;
             font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
+            color: var(--h-text);
+        }
+
+        .card-header .subtitle {
+            font-size: 0.6875rem;
+            color: var(--h-text-4);
+            margin-left: auto;
+        }
+
+        .card-body {
+            padding: 1.25rem;
+        }
+
+        /* ============================================
+           Buttons
+           ============================================ */
+        .btn {
             display: inline-flex;
             align-items: center;
+            justify-content: center;
             gap: 0.5rem;
+            font-family: var(--h-font);
+            font-size: 0.8125rem;
+            font-weight: 500;
+            padding: 0.5rem 1rem;
+            border-radius: var(--h-radius);
+            border: none;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+            outline: none;
+        }
+
+        .btn:focus-visible {
+            box-shadow: 0 0 0 2px var(--h-bg), 0 0 0 4px var(--h-accent);
         }
 
         .btn-primary {
-            background: var(--accent);
+            background: var(--h-text);
+            color: var(--h-bg);
+        }
+        .btn-primary:hover { opacity: 0.9; }
+        .btn-primary:active { opacity: 0.8; transform: scale(0.98); }
+
+        .btn-ghost {
+            background: transparent;
+            color: var(--h-text-3);
+            border: 1px solid var(--h-border);
+        }
+        .btn-ghost:hover {
+            background: var(--h-bg-hover);
+            color: var(--h-text-2);
+            border-color: var(--h-border-mid);
+        }
+
+        .btn-accent {
+            background: var(--h-accent);
             color: white;
         }
+        .btn-accent:hover { filter: brightness(1.1); }
 
-        .btn-primary:hover {
-            filter: brightness(1.15);
-            transform: translateY(-1px);
-        }
-
-        .btn-primary:active {
-            transform: translateY(0);
-        }
-
-        .btn-outline {
+        .btn-icon {
+            width: 2rem;
+            height: 2rem;
+            padding: 0;
+            border-radius: var(--h-radius);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
             background: transparent;
-            border: 1px solid var(--border);
-            color: var(--text-dim);
+            color: var(--h-text-3);
+            border: 1px solid var(--h-border);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            font-size: 0.875rem;
+        }
+        .btn-icon:hover {
+            background: var(--h-bg-hover);
+            color: var(--h-text-2);
         }
 
-        .btn-outline:hover {
-            border-color: var(--accent);
-            color: var(--accent);
+        .btn-sm {
+            font-size: 0.75rem;
+            padding: 0.35rem 0.75rem;
+            height: 1.75rem;
+        }
+
+        /* ============================================
+           Input / Textarea
+           ============================================ */
+        .input-group {
+            position: relative;
+        }
+
+        .input-group textarea {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            background: var(--h-bg-surface);
+            border: 1px solid var(--h-border-mid);
+            border-radius: var(--h-radius);
+            color: var(--h-text);
+            font-family: var(--h-font);
+            font-size: 0.875rem;
+            line-height: 1.5;
+            resize: vertical;
+            min-height: 88px;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+
+        .input-group textarea:focus {
+            outline: none;
+            border-color: var(--h-accent);
+            box-shadow: 0 0 0 3px var(--h-accent-glow);
+        }
+
+        .input-group textarea::placeholder {
+            color: var(--h-text-4);
+        }
+
+        .input-hint {
+            font-size: 0.6875rem;
+            color: var(--h-text-4);
+            margin-top: 0.375rem;
         }
 
         .button-row {
             display: flex;
-            gap: 0.75rem;
-            margin-top: 1rem;
-            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
         }
 
-        /* Example buttons */
-        .examples-section {
-            margin-top: 1.5rem;
-        }
-
-        .examples-section h3 {
-            font-size: 0.8rem;
-            color: var(--text-dim);
+        /* ============================================
+           Example Chips
+           ============================================ */
+        .section-label {
+            font-size: 0.6875rem;
+            font-weight: 600;
+            color: var(--h-text-4);
             text-transform: uppercase;
-            letter-spacing: 0.1em;
-            margin-bottom: 0.75rem;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.5rem;
         }
 
-        .example-chips {
+        .chip-grid {
             display: flex;
             flex-wrap: wrap;
-            gap: 0.5rem;
+            gap: 0.375rem;
         }
 
-        .example-chip {
-            padding: 0.4rem 0.8rem;
-            background: var(--surface2);
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            font-size: 0.78rem;
-            color: var(--text-dim);
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.3rem 0.6rem;
+            background: var(--h-bg-surface);
+            border: 1px solid var(--h-border);
+            border-radius: var(--h-radius-full);
+            font-size: 0.6875rem;
+            color: var(--h-text-3);
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.15s ease;
             white-space: nowrap;
         }
 
-        .example-chip:hover {
-            border-color: var(--accent);
-            color: var(--accent);
-            background: rgba(108, 99, 255, 0.1);
+        .chip:hover {
+            border-color: var(--h-accent);
+            color: var(--h-accent);
+            background: var(--h-accent-soft);
         }
 
-        .example-chip .lang {
-            font-size: 0.65rem;
-            background: var(--accent);
-            color: white;
+        .chip .lang-tag {
+            font-size: 0.5625rem;
+            font-weight: 600;
+            background: var(--h-bg-active);
+            color: var(--h-text-4);
             padding: 0.1rem 0.3rem;
-            border-radius: 4px;
-            margin-left: 0.3rem;
+            border-radius: 3px;
+            letter-spacing: 0.03em;
         }
 
-        /* Results */
+        .chip:hover .lang-tag {
+            background: var(--h-accent-soft);
+            color: var(--h-accent);
+        }
+
+        /* ============================================
+           Results
+           ============================================ */
         .results-section {
-            margin-top: 1.5rem;
+            margin-top: 1.25rem;
         }
 
         .result-card {
-            background: var(--surface2);
-            border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 1rem 1.2rem;
-            margin-bottom: 0.75rem;
-            transition: all 0.2s;
+            background: var(--h-bg-surface);
+            border: 1px solid var(--h-border);
+            border-radius: var(--h-radius);
+            padding: 0.875rem 1rem;
+            margin-bottom: 0.5rem;
+            transition: all 0.2s ease;
+            animation: slideUp 0.25s ease forwards;
+            opacity: 0;
         }
 
         .result-card:hover {
-            border-color: var(--accent);
+            border-color: var(--h-border-mid);
+            background: var(--h-bg-hover);
         }
 
         .result-card.top-result {
-            border-color: var(--accent);
-            box-shadow: 0 0 12px var(--accent-glow);
+            border-color: var(--h-accent);
+            box-shadow: 0 0 20px -8px var(--h-accent-glow);
         }
 
         .result-header {
             display: flex;
             align-items: center;
-            gap: 0.75rem;
-            margin-bottom: 0.5rem;
+            gap: 0.625rem;
         }
 
         .hs-code-tag {
-            font-family: 'JetBrains Mono', 'Fira Code', monospace;
-            font-size: 1.1rem;
-            font-weight: 700;
-            color: var(--accent);
+            font-family: var(--h-mono);
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: var(--h-text);
         }
 
-        .confidence-bar {
+        .confidence-bar-track {
             flex: 1;
-            height: 6px;
-            background: var(--border);
-            border-radius: 3px;
+            height: 4px;
+            background: var(--h-bg-active);
+            border-radius: 2px;
             overflow: hidden;
         }
 
-        .confidence-fill {
+        .confidence-bar-fill {
             height: 100%;
-            border-radius: 3px;
-            transition: width 0.5s ease;
+            border-radius: 2px;
+            transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
         }
 
-        .confidence-text {
-            font-size: 0.85rem;
-            font-weight: 600;
-            min-width: 50px;
+        .confidence-value {
+            font-family: var(--h-mono);
+            font-size: 0.75rem;
+            font-weight: 500;
+            min-width: 40px;
             text-align: right;
         }
 
         .result-desc {
-            font-size: 0.85rem;
-            color: var(--text-dim);
-            margin-top: 0.3rem;
+            font-size: 0.8125rem;
+            color: var(--h-text-3);
+            margin-top: 0.35rem;
+            line-height: 1.4;
         }
 
-        .result-chapter {
-            display: inline-block;
-            font-size: 0.7rem;
-            background: rgba(108, 99, 255, 0.15);
-            color: var(--accent);
-            padding: 0.15rem 0.5rem;
+        .result-meta {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.625rem;
+            font-weight: 500;
+            background: var(--h-bg-active);
+            color: var(--h-text-4);
+            padding: 0.15rem 0.4rem;
             border-radius: 4px;
-            margin-top: 0.4rem;
+            margin-top: 0.35rem;
         }
 
-        .inference-time {
-            font-size: 0.75rem;
-            color: var(--text-dim);
-            margin-top: 1rem;
-            text-align: right;
+        .inference-badge {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            font-size: 0.6875rem;
+            font-family: var(--h-mono);
+            color: var(--h-text-4);
+            margin-top: 0.75rem;
+            justify-content: flex-end;
         }
 
         /* Similar examples */
         .similar-section {
-            margin-top: 1.5rem;
-            padding-top: 1rem;
-            border-top: 1px solid var(--border);
-        }
-
-        .similar-section h3 {
-            font-size: 0.8rem;
-            color: var(--text-dim);
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            margin-bottom: 0.75rem;
+            margin-top: 1rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid var(--h-border);
         }
 
         .similar-item {
-            font-size: 0.8rem;
-            padding: 0.5rem 0.75rem;
-            background: var(--bg);
-            border-radius: 6px;
-            margin-bottom: 0.5rem;
             display: flex;
-            justify-content: space-between;
             align-items: center;
-        }
-
-        .similar-item .code {
-            font-family: monospace;
-            color: var(--accent);
+            justify-content: space-between;
+            gap: 0.75rem;
+            padding: 0.5rem 0.625rem;
+            background: var(--h-bg);
+            border-radius: var(--h-radius);
+            margin-bottom: 0.375rem;
             font-size: 0.75rem;
         }
 
-        /* Visualization */
-        .viz-section {
-            grid-column: 2;
-            grid-row: 1 / 3;
+        .similar-item .sim-text {
+            color: var(--h-text-3);
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .similar-item .sim-code {
+            font-family: var(--h-mono);
+            font-size: 0.6875rem;
+            color: var(--h-accent);
+            flex-shrink: 0;
+        }
+
+        .similar-item .sim-score {
+            font-family: var(--h-mono);
+            font-size: 0.625rem;
+            color: var(--h-text-4);
+            flex-shrink: 0;
+        }
+
+        /* ============================================
+           Visualization Panel
+           ============================================ */
+        .viz-toolbar {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.625rem 1rem;
+            border-bottom: 1px solid var(--h-border);
+            background: var(--h-bg);
+            flex-wrap: wrap;
+        }
+
+        .viz-toolbar .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+        }
+
+        .viz-toolbar .divider {
+            width: 1px;
+            height: 1.25rem;
+            background: var(--h-border-mid);
+            margin: 0 0.25rem;
+        }
+
+        .filter-select {
+            font-family: var(--h-font);
+            font-size: 0.6875rem;
+            padding: 0.3rem 0.5rem;
+            background: var(--h-bg-surface);
+            color: var(--h-text-3);
+            border: 1px solid var(--h-border);
+            border-radius: var(--h-radius);
+            cursor: pointer;
+            outline: none;
+        }
+        .filter-select:focus {
+            border-color: var(--h-accent);
+        }
+
+        .search-mini {
+            font-family: var(--h-font);
+            font-size: 0.6875rem;
+            padding: 0.3rem 0.5rem;
+            background: var(--h-bg-surface);
+            color: var(--h-text);
+            border: 1px solid var(--h-border);
+            border-radius: var(--h-radius);
+            width: 160px;
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        .search-mini:focus {
+            border-color: var(--h-accent);
+        }
+        .search-mini::placeholder {
+            color: var(--h-text-4);
         }
 
         #umap-plot {
             width: 100%;
-            height: calc(100vh - 180px);
-            min-height: 500px;
+            flex: 1;
+            min-height: 400px;
         }
 
-        .loading {
+        .viz-container {
             display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        /* ============================================
+           Loading
+           ============================================ */
+        .loading-state {
+            display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
             padding: 3rem;
-            color: var(--text-dim);
+            gap: 0.75rem;
         }
 
         .spinner {
-            width: 24px;
-            height: 24px;
-            border: 3px solid var(--border);
-            border-top-color: var(--accent);
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--h-border-mid);
+            border-top-color: var(--h-accent);
             border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-            margin-right: 0.75rem;
+            animation: spin 0.7s linear infinite;
+        }
+
+        .spinner-sm {
+            width: 14px;
+            height: 14px;
+            border-width: 2px;
         }
 
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
 
-        /* Legend */
-        .legend-toggle {
-            font-size: 0.75rem;
-            color: var(--text-dim);
-            cursor: pointer;
-            margin-top: 0.5rem;
+        .loading-text {
+            font-size: 0.8125rem;
+            color: var(--h-text-4);
+        }
+
+        /* ============================================
+           Empty state
+           ============================================ */
+        .empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem 2rem;
             text-align: center;
         }
 
-        /* Responsive */
-        @media (max-width: 1024px) {
-            .main-container {
-                grid-template-columns: 1fr;
-                padding: 1rem;
-            }
-            .viz-section {
-                grid-column: 1;
-                grid-row: auto;
-            }
-            #umap-plot {
-                height: 500px;
-            }
+        .empty-state .empty-icon {
+            font-size: 2rem;
+            margin-bottom: 0.75rem;
+            opacity: 0.4;
         }
 
-        /* Hidden */
-        .hidden { display: none !important; }
+        .empty-state p {
+            font-size: 0.8125rem;
+            color: var(--h-text-4);
+            max-width: 280px;
+        }
 
-        /* Fade in animation */
+        /* ============================================
+           Point detail overlay
+           ============================================ */
+        .point-detail {
+            position: absolute;
+            bottom: 1rem;
+            left: 1rem;
+            right: 1rem;
+            background: rgba(10,10,10,0.92);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--h-border-mid);
+            border-radius: var(--h-radius-lg);
+            padding: 1rem;
+            z-index: 10;
+            animation: slideUp 0.2s ease;
+            display: none;
+        }
+
+        .point-detail.visible { display: block; }
+
+        .point-detail .pd-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .point-detail .pd-code {
+            font-family: var(--h-mono);
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .point-detail .pd-close {
+            cursor: pointer;
+            color: var(--h-text-4);
+            font-size: 0.875rem;
+        }
+        .point-detail .pd-close:hover { color: var(--h-text-2); }
+
+        .point-detail .pd-desc {
+            font-size: 0.8125rem;
+            color: var(--h-text-3);
+        }
+
+        .point-detail .pd-similar {
+            margin-top: 0.5rem;
+            padding-top: 0.5rem;
+            border-top: 1px solid var(--h-border);
+        }
+
+        .point-detail .pd-similar-label {
+            font-size: 0.625rem;
+            font-weight: 600;
+            color: var(--h-text-4);
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            margin-bottom: 0.375rem;
+        }
+
+        /* ============================================
+           Animations
+           ============================================ */
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(6px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(8px); }
-            to { opacity: 1; transform: translateY(0); }
+            from { opacity: 0; }
+            to   { opacity: 1; }
         }
-        .fade-in {
-            animation: fadeIn 0.3s ease forwards;
+
+        /* ============================================
+           Fullscreen overlay
+           ============================================ */
+        .fullscreen-mode .app-layout {
+            grid-template-columns: 1fr;
         }
+        .fullscreen-mode .sidebar-panel { display: none; }
+        .fullscreen-mode #umap-plot { min-height: calc(100vh - 120px); }
+
+        /* ============================================
+           Scrollbar
+           ============================================ */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--h-border-mid);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--h-border-strong);
+        }
+
+        /* ============================================
+           Responsive
+           ============================================ */
+        @media (max-width: 1024px) {
+            .app-layout {
+                grid-template-columns: 1fr;
+            }
+            .sidebar-panel {
+                border-right: none;
+                border-bottom: 1px solid var(--h-border);
+                max-height: none;
+            }
+            .main-panel {
+                min-height: 500px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .header {
+                padding: 0.75rem 1rem;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+            }
+            .header-stats { display: none; }
+            .card-body { padding: 1rem; }
+            .chip-grid { gap: 0.25rem; }
+            .chip { font-size: 0.625rem; padding: 0.25rem 0.5rem; }
+            .viz-toolbar { flex-wrap: wrap; gap: 0.375rem; }
+            .search-mini { width: 120px; }
+        }
+
+        /* Utility */
+        .hidden { display: none !important; }
+        .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>🏷️ HS Code Classifier</h1>
-        <span class="badge">POC v1.0</span>
-        <div class="stats">
-            {{ metadata.get('n_examples', '?') }} examples · {{ metadata.get('n_codes', '?') }} HS codes · {{ metadata.get('languages', [])|length }} languages · {{ (metadata.get('accuracy', 0) * 100)|round(1) }}% accuracy
+    <!-- ============================================
+         Header
+         ============================================ -->
+    <header class="header" role="banner">
+        <div class="header-logo">
+            <h1>HS Code Classifier</h1>
+            <span class="header-badge">POC v1.0</span>
         </div>
-    </div>
+        <div class="header-stats" aria-label="Model statistics">
+            <span class="stat-pill">{{ metadata.get('n_examples', '?') }} examples</span>
+            <span class="stat-pill">{{ metadata.get('n_codes', '?') }} codes</span>
+            <span class="stat-pill">{{ metadata.get('languages', [])|length }} langs</span>
+            <span class="stat-pill" style="color: var(--h-emerald);">{{ (metadata.get('accuracy', 0) * 100)|round(1) }}% acc</span>
+        </div>
+        <div class="header-controls">
+            <button class="btn-icon" onclick="toggleViewMode()" title="Toggle 2D/3D" aria-label="Toggle 2D/3D view" id="view-toggle-btn">
+                <span id="view-toggle-icon">◇</span>
+            </button>
+            <button class="btn-icon" onclick="toggleFullscreen()" title="Fullscreen visualization" aria-label="Toggle fullscreen" id="fullscreen-btn">
+                ⛶
+            </button>
+        </div>
+    </header>
 
-    <div class="main-container">
-        <!-- Left Panel: Input + Results -->
-        <div>
-            <div class="panel input-section">
-                <div class="panel-header">
-                    📝 Product Description
+    <!-- ============================================
+         Main Layout
+         ============================================ -->
+    <div class="app-layout" id="app-layout">
+        <!-- ——— Left: Input + Results ——— -->
+        <div class="sidebar-panel" role="complementary" aria-label="Classification input">
+            <div class="card" style="border: none; border-radius: 0; background: transparent;">
+                <div class="card-header">
+                    <h2>Classification</h2>
                 </div>
-                <div class="panel-body">
-                    <div class="search-box">
-                        <textarea id="query-input" placeholder="Enter a product description in any language...&#10;&#10;Examples:&#10;  • Fresh boneless beef for restaurant supply&#10;  • ข้าวหอมมะลิไทย (Thai jasmine rice)&#10;  • 智能手机 5G (5G smartphone)&#10;  • Tôm đông lạnh xuất khẩu (Frozen shrimp for export)" rows="4"></textarea>
+                <div class="card-body">
+                    <!-- Input -->
+                    <div class="input-group">
+                        <label for="query-input" class="sr-only">Product description</label>
+                        <textarea
+                            id="query-input"
+                            placeholder="Describe a product in any language…"
+                            rows="3"
+                            aria-label="Product description input"
+                        ></textarea>
+                        <div class="input-hint">⌘+Enter to classify · Supports EN, TH, VI, ZH and more</div>
                     </div>
+
                     <div class="button-row">
-                        <button class="btn btn-primary" onclick="classify()" id="classify-btn">
-                            🔍 Classify
+                        <button class="btn btn-primary" onclick="classify()" id="classify-btn" aria-label="Classify product">
+                            Classify
                         </button>
-                        <button class="btn btn-outline" onclick="clearAll()">
-                            ✕ Clear
+                        <button class="btn btn-ghost" onclick="clearAll()" aria-label="Clear input and results">
+                            Clear
                         </button>
                     </div>
 
-                    <div class="examples-section">
-                        <h3>Try these examples</h3>
-                        <div class="example-chips">
-                            <span class="example-chip" onclick="setExample('Fresh boneless beef cuts for restaurant supply')">Boneless beef <span class="lang">EN</span></span>
-                            <span class="example-chip" onclick="setExample('Laptop computer 14 inch 16GB RAM')">Laptop <span class="lang">EN</span></span>
-                            <span class="example-chip" onclick="setExample('ข้าวหอมมะลิไทย ขัดสี 5% หัก')">ข้าวหอมมะลิ <span class="lang">TH</span></span>
-                            <span class="example-chip" onclick="setExample('冷冻虾仁 去头去壳')">冷冻虾仁 <span class="lang">ZH</span></span>
-                            <span class="example-chip" onclick="setExample('Tôm đông lạnh xuất khẩu')">Tôm đông lạnh <span class="lang">VI</span></span>
-                            <span class="example-chip" onclick="setExample('Cotton T-shirt men printed knitted')">Cotton T-shirt <span class="lang">EN</span></span>
-                            <span class="example-chip" onclick="setExample('Lithium-ion battery pack for electric vehicles')">Li-ion battery <span class="lang">EN</span></span>
-                            <span class="example-chip" onclick="setExample('White refined cane sugar ICUMSA 45')">White sugar <span class="lang">EN</span></span>
-                            <span class="example-chip" onclick="setExample('New radial tyres for passenger cars 205/55R16')">Car tyres <span class="lang">EN</span></span>
-                            <span class="example-chip" onclick="setExample('智能手机 安卓系统 6.7英寸')">智能手机 <span class="lang">ZH</span></span>
-                            <span class="example-chip" onclick="setExample('Samsung Galaxy S24 5G smartphone')">Smartphone <span class="lang">EN</span></span>
-                            <span class="example-chip" onclick="setExample('Electric passenger car battery powered Tesla')">Electric car <span class="lang">EN</span></span>
-                            <span class="example-chip" onclick="setExample('สมาร์ทโฟน แอนดรอยด์ จอ 6.7 นิ้ว')">สมาร์ทโฟน <span class="lang">TH</span></span>
-                            <span class="example-chip" onclick="setExample('Cà phê nhân xanh chưa rang Robusta')">Cà phê <span class="lang">VI</span></span>
-                            <span class="example-chip" onclick="setExample('Hot rolled steel coil width 600mm')">Steel coil <span class="lang">EN</span></span>
+                    <!-- Examples -->
+                    <div style="margin-top: 1.25rem;">
+                        <div class="section-label">Examples</div>
+                        <div class="chip-grid" role="list" aria-label="Example product descriptions">
+                            <span class="chip" role="listitem" onclick="setExample('Fresh boneless beef cuts for restaurant supply')">Boneless beef <span class="lang-tag">EN</span></span>
+                            <span class="chip" role="listitem" onclick="setExample('Laptop computer 14 inch 16GB RAM')">Laptop <span class="lang-tag">EN</span></span>
+                            <span class="chip" role="listitem" onclick="setExample('ข้าวหอมมะลิไทย ขัดสี 5% หัก')">ข้าวหอมมะลิ <span class="lang-tag">TH</span></span>
+                            <span class="chip" role="listitem" onclick="setExample('冷冻虾仁 去头去壳')">冷冻虾仁 <span class="lang-tag">ZH</span></span>
+                            <span class="chip" role="listitem" onclick="setExample('Tôm đông lạnh xuất khẩu')">Tôm đông lạnh <span class="lang-tag">VI</span></span>
+                            <span class="chip" role="listitem" onclick="setExample('Cotton T-shirt men printed knitted')">Cotton T-shirt <span class="lang-tag">EN</span></span>
+                            <span class="chip" role="listitem" onclick="setExample('Lithium-ion battery pack for electric vehicles')">Li-ion battery <span class="lang-tag">EN</span></span>
+                            <span class="chip" role="listitem" onclick="setExample('White refined cane sugar ICUMSA 45')">White sugar <span class="lang-tag">EN</span></span>
+                            <span class="chip" role="listitem" onclick="setExample('New radial tyres for passenger cars 205/55R16')">Car tyres <span class="lang-tag">EN</span></span>
+                            <span class="chip" role="listitem" onclick="setExample('智能手机 安卓系统 6.7英寸')">智能手机 <span class="lang-tag">ZH</span></span>
+                            <span class="chip" role="listitem" onclick="setExample('Samsung Galaxy S24 5G smartphone')">Smartphone <span class="lang-tag">EN</span></span>
+                            <span class="chip" role="listitem" onclick="setExample('Electric passenger car battery powered Tesla')">Electric car <span class="lang-tag">EN</span></span>
+                            <span class="chip" role="listitem" onclick="setExample('สมาร์ทโฟน แอนดรอยด์ จอ 6.7 นิ้ว')">สมาร์ทโฟน <span class="lang-tag">TH</span></span>
+                            <span class="chip" role="listitem" onclick="setExample('Cà phê nhân xanh chưa rang Robusta')">Cà phê <span class="lang-tag">VI</span></span>
+                            <span class="chip" role="listitem" onclick="setExample('Hot rolled steel coil width 600mm')">Steel coil <span class="lang-tag">EN</span></span>
                         </div>
                     </div>
 
-                    <!-- Results -->
-                    <div class="results-section hidden" id="results-section">
+                    <!-- Results (hidden until classify) -->
+                    <div class="results-section hidden" id="results-section" aria-live="polite">
+                        <div class="section-label" style="margin-top: 0.25rem;">Results</div>
                         <div id="results-container"></div>
-                        <div class="inference-time" id="inference-time"></div>
-                        <div class="similar-section" id="similar-section">
-                            <h3>📌 Nearest Training Examples</h3>
+                        <div class="inference-badge" id="inference-time"></div>
+                        <div class="similar-section hidden" id="similar-section">
+                            <div class="section-label">Nearest Training Examples</div>
                             <div id="similar-container"></div>
                         </div>
                     </div>
@@ -465,313 +875,533 @@
             </div>
         </div>
 
-        <!-- Right Panel: Visualization -->
-        <div class="panel viz-section">
-            <div class="panel-header">
-                🌐 Latent Space (UMAP Projection)
-                <span style="margin-left: auto; font-size: 0.75rem; color: var(--text-dim);">
-                    Points colored by HS chapter · Hover for details
-                </span>
-            </div>
-            <div class="panel-body" style="padding: 0.5rem;">
-                <div id="umap-loading" class="loading">
-                    <div class="spinner"></div>
-                    Loading visualization data...
+        <!-- ——— Right: Visualization ——— -->
+        <div class="main-panel" role="main" aria-label="Latent space visualization">
+            <div class="viz-container">
+                <!-- Toolbar -->
+                <div class="viz-toolbar">
+                    <div class="toolbar-group">
+                        <span style="font-size:0.6875rem;color:var(--h-text-4);">Filter:</span>
+                        <select class="filter-select" id="chapter-filter" onchange="applyFilters()" aria-label="Filter by HS chapter">
+                            <option value="all">All chapters</option>
+                        </select>
+                        <select class="filter-select" id="language-filter" onchange="applyFilters()" aria-label="Filter by language">
+                            <option value="all">All languages</option>
+                        </select>
+                    </div>
+                    <div class="divider"></div>
+                    <div class="toolbar-group">
+                        <input type="text" class="search-mini" id="point-search" placeholder="Search points…" oninput="searchPoints()" aria-label="Search visualization points">
+                    </div>
+                    <div style="margin-left:auto;" class="toolbar-group">
+                        <button class="btn-icon" onclick="resetView()" title="Reset zoom" aria-label="Reset zoom">↺</button>
+                        <button class="btn-icon" onclick="exportPlot('png')" title="Export PNG" aria-label="Export as PNG">📷</button>
+                        <button class="btn-icon" onclick="exportPlot('svg')" title="Export SVG" aria-label="Export as SVG">✎</button>
+                    </div>
                 </div>
-                <div id="umap-plot"></div>
+
+                <!-- Loading state -->
+                <div id="umap-loading" class="loading-state">
+                    <div class="spinner"></div>
+                    <span class="loading-text">Loading latent space…</span>
+                </div>
+
+                <!-- Empty state -->
+                <div id="umap-empty" class="empty-state hidden">
+                    <div class="empty-icon">🌐</div>
+                    <p>No visualization data available. Ensure UMAP projection has been computed.</p>
+                </div>
+
+                <!-- Plot -->
+                <div id="umap-plot" style="position:relative;">
+                    <!-- Point detail overlay -->
+                    <div class="point-detail" id="point-detail">
+                        <div class="pd-header">
+                            <span class="pd-code" id="pd-code"></span>
+                            <span class="pd-close" onclick="closePointDetail()">✕</span>
+                        </div>
+                        <div class="pd-desc" id="pd-desc"></div>
+                        <div class="pd-similar" id="pd-similar"></div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
+    <!-- ============================================
+         Scripts
+         ============================================ -->
     <script>
-        // Color palette for chapters
-        const CHAPTER_COLORS = {
-            'Electronics': '#6c63ff',
-            'Vehicles': '#e74c3c',
-            'Machinery': '#3498db',
-            'Meat': '#c0392b',
-            'Fish': '#2980b9',
-            'Dairy': '#f39c12',
-            'Vegetables': '#27ae60',
-            'Fruits': '#2ecc71',
-            'Coffee/Tea': '#8e6f47',
-            'Cereals': '#d4a739',
-            'Sugar': '#e8c8a0',
-            'Cocoa': '#5d3a1a',
-            'Food Preparations': '#e67e22',
-            'Beverages': '#9b59b6',
-            'Tobacco': '#7f8c8d',
-            'Mineral Fuels': '#34495e',
-            'Minerals': '#95a5a6',
-            'Chemicals': '#1abc9c',
-            'Pharmaceuticals': '#16a085',
-            'Cosmetics': '#ff69b4',
-            'Plastics': '#00bcd4',
-            'Rubber': '#333333',
-            'Wood': '#8d6e63',
-            'Paper': '#bcaaa4',
-            'Textiles': '#ff9800',
-            'Garments': '#ff5722',
-            'Footwear': '#795548',
-            'Steel': '#607d8b',
-            'Metals': '#78909c',
-            'Furniture': '#a1887f',
-            'Toys': '#ffeb3b',
-            'Instruments': '#00e5ff',
-            'Medical': '#76ff03',
-            'Oils': '#ffc107',
-            'Plants': '#4caf50',
-            'Oil Seeds': '#689f38',
-            'Spices': '#d84315',
-            'Aircraft': '#0288d1',
-            'Ships': '#01579b',
+    /* ——————————————————————————————————————————
+       Harbour Chart Colors — curated palette
+       mapped to HS chapters
+       —————————————————————————————————————————— */
+    const CHAPTER_COLORS = {
+        'Electronics':       '#3b82f6',
+        'Vehicles':          '#ef4444',
+        'Machinery':         '#0ea5e9',
+        'Meat':              '#dc2626',
+        'Fish':              '#0284c7',
+        'Dairy':             '#f59e0b',
+        'Vegetables':        '#22c55e',
+        'Fruits':            '#10b981',
+        'Coffee/Tea':        '#92400e',
+        'Cereals':           '#d97706',
+        'Sugar':             '#fbbf24',
+        'Cocoa':             '#78350f',
+        'Food Preparations': '#ea580c',
+        'Beverages':         '#a855f7',
+        'Tobacco':           '#6b7280',
+        'Mineral Fuels':     '#334155',
+        'Minerals':          '#94a3b8',
+        'Chemicals':         '#14b8a6',
+        'Pharmaceuticals':   '#0d9488',
+        'Cosmetics':         '#ec4899',
+        'Plastics':          '#06b6d4',
+        'Rubber':            '#374151',
+        'Wood':              '#a16207',
+        'Paper':             '#d6d3d1',
+        'Textiles':          '#f97316',
+        'Garments':          '#e11d48',
+        'Footwear':          '#78716c',
+        'Steel':             '#64748b',
+        'Metals':            '#94a3b8',
+        'Furniture':         '#a8a29e',
+        'Toys':              '#eab308',
+        'Instruments':       '#06b6d4',
+        'Medical':           '#22d3ee',
+        'Oils':              '#ca8a04',
+        'Plants':            '#16a34a',
+        'Oil Seeds':         '#65a30d',
+        'Spices':            '#c2410c',
+        'Aircraft':          '#2563eb',
+        'Ships':             '#1d4ed8',
+    };
+
+    /* ——————————————————————————————————————————
+       State
+       —————————————————————————————————————————— */
+    let plotInitialized = false;
+    let queryMarkerTrace = null;
+    let allPoints = [];
+    let allChapters = [];
+    let allLanguages = [];
+    let is3D = false;
+    let isFullscreen = false;
+
+    /* ——————————————————————————————————————————
+       Visualization
+       —————————————————————————————————————————— */
+    async function loadVisualization() {
+        try {
+            const response = await fetch('/visualization-data');
+            const data = await response.json();
+
+            if (!data.points || data.points.length === 0) {
+                document.getElementById('umap-loading').classList.add('hidden');
+                document.getElementById('umap-empty').classList.remove('hidden');
+                return;
+            }
+
+            allPoints = data.points;
+
+            // Extract unique chapters and languages for filters
+            const chapSet = new Set();
+            const langSet = new Set();
+            data.points.forEach(p => {
+                chapSet.add(p.chapter);
+                langSet.add(p.language);
+            });
+            allChapters = [...chapSet].sort();
+            allLanguages = [...langSet].sort();
+
+            populateFilters();
+            renderPlot(data.points);
+        } catch (error) {
+            document.getElementById('umap-loading').innerHTML =
+                `<span class="loading-text" style="color:var(--h-red);">Error: ${error.message}</span>`;
+        }
+    }
+
+    function populateFilters() {
+        const chapterSel = document.getElementById('chapter-filter');
+        allChapters.forEach(ch => {
+            const opt = document.createElement('option');
+            opt.value = ch;
+            opt.textContent = ch;
+            chapterSel.appendChild(opt);
+        });
+
+        const langSel = document.getElementById('language-filter');
+        allLanguages.forEach(lang => {
+            const opt = document.createElement('option');
+            opt.value = lang;
+            opt.textContent = lang.toUpperCase();
+            langSel.appendChild(opt);
+        });
+    }
+
+    function applyFilters() {
+        const chapter = document.getElementById('chapter-filter').value;
+        const language = document.getElementById('language-filter').value;
+        const searchTerm = document.getElementById('point-search').value.toLowerCase().trim();
+
+        let filtered = allPoints;
+        if (chapter !== 'all') filtered = filtered.filter(p => p.chapter === chapter);
+        if (language !== 'all') filtered = filtered.filter(p => p.language === language);
+        if (searchTerm) filtered = filtered.filter(p => p.text.toLowerCase().includes(searchTerm));
+
+        renderPlot(filtered);
+    }
+
+    function searchPoints() {
+        applyFilters();
+    }
+
+    function renderPlot(points) {
+        // Group by chapter
+        const chapters = {};
+        points.forEach(p => {
+            if (!chapters[p.chapter]) chapters[p.chapter] = { x: [], y: [], text: [], customdata: [] };
+            chapters[p.chapter].x.push(p.x);
+            chapters[p.chapter].y.push(p.y);
+            chapters[p.chapter].text.push(p.text);
+            chapters[p.chapter].customdata.push([p.hs_code, p.hs_desc, p.language, p.text]);
+        });
+
+        const traces = Object.entries(chapters).map(([chapter, pts]) => ({
+            x: pts.x,
+            y: pts.y,
+            mode: 'markers',
+            type: is3D ? 'scatter3d' : 'scatter',
+            name: chapter,
+            marker: {
+                size: is3D ? 3 : 5,
+                color: CHAPTER_COLORS[chapter] || '#6b7280',
+                opacity: 0.8,
+                line: { width: 0, color: 'transparent' }
+            },
+            text: pts.text,
+            customdata: pts.customdata,
+            hovertemplate:
+                '<b style="font-family:monospace">%{customdata[0]}</b><br>' +
+                '%{customdata[1]}<br>' +
+                '<span style="color:#999">%{customdata[3]}</span><br>' +
+                '<i>%{customdata[2]}</i>' +
+                '<extra>%{fullData.name}</extra>',
+        }));
+
+        const layout = {
+            paper_bgcolor: '#0a0a0a',
+            plot_bgcolor: '#0a0a0a',
+            font: {
+                color: 'rgba(255,255,255,0.3)',
+                family: "'Inter', sans-serif",
+                size: 11,
+            },
+            margin: { t: 8, r: 8, b: 36, l: 36 },
+            xaxis: {
+                title: { text: 'UMAP 1', font: { size: 10, color: 'rgba(255,255,255,0.2)' } },
+                gridcolor: 'rgba(255,255,255,0.03)',
+                zerolinecolor: 'rgba(255,255,255,0.05)',
+                tickfont: { size: 9, color: 'rgba(255,255,255,0.15)' },
+            },
+            yaxis: {
+                title: { text: 'UMAP 2', font: { size: 10, color: 'rgba(255,255,255,0.2)' } },
+                gridcolor: 'rgba(255,255,255,0.03)',
+                zerolinecolor: 'rgba(255,255,255,0.05)',
+                tickfont: { size: 9, color: 'rgba(255,255,255,0.15)' },
+            },
+            legend: {
+                bgcolor: 'rgba(10,10,10,0.9)',
+                bordercolor: 'rgba(255,255,255,0.05)',
+                borderwidth: 1,
+                font: { size: 9, color: 'rgba(255,255,255,0.5)' },
+                itemsizing: 'constant',
+                orientation: 'v',
+                x: 1,
+                xanchor: 'right',
+                y: 1,
+            },
+            hovermode: 'closest',
+            hoverlabel: {
+                bgcolor: 'rgba(10,10,10,0.95)',
+                bordercolor: 'rgba(255,255,255,0.1)',
+                font: { family: "'Inter', sans-serif", size: 11, color: '#ffffff' },
+            },
+            dragmode: 'pan',
         };
 
-        let plotInitialized = false;
-        let queryMarkerTrace = null;
+        const config = {
+            responsive: true,
+            displayModeBar: false,
+            scrollZoom: true,
+        };
 
-        // Initialize UMAP plot
-        async function loadVisualization() {
-            try {
-                const response = await fetch('/visualization-data');
-                const data = await response.json();
-                
-                if (!data.points || data.points.length === 0) {
-                    document.getElementById('umap-loading').innerHTML = 'No visualization data available';
-                    return;
-                }
+        document.getElementById('umap-loading').classList.add('hidden');
 
-                // Group points by chapter
-                const chapters = {};
-                data.points.forEach(p => {
-                    if (!chapters[p.chapter]) chapters[p.chapter] = { x: [], y: [], text: [], hs: [], customdata: [] };
-                    chapters[p.chapter].x.push(p.x);
-                    chapters[p.chapter].y.push(p.y);
-                    chapters[p.chapter].text.push(p.text);
-                    chapters[p.chapter].hs.push(p.hs_code);
-                    chapters[p.chapter].customdata.push([p.hs_code, p.hs_desc, p.language]);
-                });
+        Plotly.react('umap-plot', traces, layout, config);
+        plotInitialized = true;
+        queryMarkerTrace = null;
 
-                const traces = Object.entries(chapters).map(([chapter, pts]) => ({
-                    x: pts.x,
-                    y: pts.y,
-                    mode: 'markers',
-                    type: 'scatter',
-                    name: chapter,
-                    marker: {
-                        size: 6,
-                        color: CHAPTER_COLORS[chapter] || '#888',
-                        opacity: 0.75,
-                        line: { width: 0.5, color: 'rgba(255,255,255,0.2)' }
-                    },
-                    text: pts.text,
-                    customdata: pts.customdata,
-                    hovertemplate: '<b>%{customdata[0]}</b> - %{customdata[1]}<br>' +
-                                   '%{text}<br>' +
-                                   '<i>Lang: %{customdata[2]}</i><extra>%{fullData.name}</extra>',
-                }));
-
-                const layout = {
-                    paper_bgcolor: '#1a1d27',
-                    plot_bgcolor: '#0f1117',
-                    font: { color: '#8b95b0', family: 'Inter, sans-serif' },
-                    margin: { t: 10, r: 10, b: 40, l: 40 },
-                    xaxis: {
-                        title: 'UMAP 1',
-                        gridcolor: '#2d3348',
-                        zerolinecolor: '#2d3348',
-                    },
-                    yaxis: {
-                        title: 'UMAP 2',
-                        gridcolor: '#2d3348',
-                        zerolinecolor: '#2d3348',
-                    },
-                    legend: {
-                        bgcolor: 'rgba(26,29,39,0.9)',
-                        bordercolor: '#2d3348',
-                        borderwidth: 1,
-                        font: { size: 10 },
-                        itemsizing: 'constant',
-                    },
-                    hovermode: 'closest',
-                };
-
-                document.getElementById('umap-loading').classList.add('hidden');
-                Plotly.newPlot('umap-plot', traces, layout, {
-                    responsive: true,
-                    displayModeBar: true,
-                    modeBarButtonsToRemove: ['lasso2d', 'select2d'],
-                });
-                plotInitialized = true;
-
-            } catch (error) {
-                document.getElementById('umap-loading').innerHTML = 'Error loading visualization: ' + error.message;
+        // Click handler for points
+        const plotEl = document.getElementById('umap-plot');
+        plotEl.removeAllListeners?.('plotly_click');
+        plotEl.on('plotly_click', function(data) {
+            if (data.points.length > 0) {
+                const pt = data.points[0];
+                showPointDetail(pt.customdata);
             }
-        }
+        });
+    }
 
-        // Classify text
-        async function classify() {
-            const input = document.getElementById('query-input');
-            const text = input.value.trim();
-            if (!text) return;
+    function showPointDetail(customdata) {
+        const [code, desc, lang, text] = customdata;
+        document.getElementById('pd-code').textContent = `${code} — ${desc}`;
+        document.getElementById('pd-desc').textContent = text;
+        document.getElementById('pd-similar').innerHTML =
+            `<div class="pd-similar-label">Language: ${lang}</div>`;
+        document.getElementById('point-detail').classList.add('visible');
+    }
 
-            const btn = document.getElementById('classify-btn');
-            btn.disabled = true;
-            btn.innerHTML = '<div class="spinner" style="width:16px;height:16px;margin:0"></div> Classifying...';
+    function closePointDetail() {
+        document.getElementById('point-detail').classList.remove('visible');
+    }
 
-            try {
-                const response = await fetch('/predict', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text }),
-                });
-                const data = await response.json();
+    /* ——————————————————————————————————————————
+       Classification
+       —————————————————————————————————————————— */
+    async function classify() {
+        const input = document.getElementById('query-input');
+        const text = input.value.trim();
+        if (!text) return;
 
-                if (data.error) {
-                    alert(data.error);
-                    return;
-                }
+        const btn = document.getElementById('classify-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<div class="spinner spinner-sm" style="margin:0"></div> Classifying…';
 
-                showResults(data);
-                highlightOnPlot(text);
-
-            } catch (error) {
-                alert('Error: ' + error.message);
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '🔍 Classify';
-            }
-        }
-
-        function showResults(data) {
-            const container = document.getElementById('results-container');
-            const section = document.getElementById('results-section');
-            section.classList.remove('hidden');
-
-            let html = '';
-            data.predictions.forEach((pred, i) => {
-                const conf = (pred.confidence * 100).toFixed(1);
-                const barColor = pred.confidence > 0.7 ? 'var(--success)' : 
-                                 pred.confidence > 0.3 ? 'var(--warning)' : 'var(--danger)';
-                const isTop = i === 0;
-                
-                html += `
-                    <div class="result-card fade-in ${isTop ? 'top-result' : ''}" style="animation-delay: ${i * 0.1}s">
-                        <div class="result-header">
-                            <span class="hs-code-tag">${pred.hs_code}</span>
-                            <div class="confidence-bar">
-                                <div class="confidence-fill" style="width: ${conf}%; background: ${barColor}"></div>
-                            </div>
-                            <span class="confidence-text" style="color: ${barColor}">${conf}%</span>
-                        </div>
-                        <div class="result-desc">${pred.description}</div>
-                        <span class="result-chapter">${pred.chapter} · Ch.${pred.chapter_code} · H.${pred.heading_code}</span>
-                    </div>
-                `;
+        try {
+            const response = await fetch('/predict', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text }),
             });
+            const data = await response.json();
 
-            container.innerHTML = html;
-            document.getElementById('inference-time').textContent = 
-                `⚡ Inference: ${data.inference_time_ms}ms`;
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
 
-            // Similar examples
-            const simContainer = document.getElementById('similar-container');
+            showResults(data);
+            highlightOnPlot(text);
+        } catch (error) {
+            alert('Error: ' + error.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = 'Classify';
+        }
+    }
+
+    function showResults(data) {
+        const container = document.getElementById('results-container');
+        const section = document.getElementById('results-section');
+        section.classList.remove('hidden');
+
+        let html = '';
+        data.predictions.forEach((pred, i) => {
+            const conf = (pred.confidence * 100).toFixed(1);
+            const barColor = pred.confidence > 0.7 ? 'var(--h-emerald)' :
+                             pred.confidence > 0.3 ? 'var(--h-amber)' : 'var(--h-red)';
+            const isTop = i === 0;
+
+            html += `
+                <div class="result-card ${isTop ? 'top-result' : ''}" style="animation-delay:${i * 0.06}s">
+                    <div class="result-header">
+                        <span class="hs-code-tag">${pred.hs_code}</span>
+                        <div class="confidence-bar-track">
+                            <div class="confidence-bar-fill" style="width:${conf}%;background:${barColor}"></div>
+                        </div>
+                        <span class="confidence-value" style="color:${barColor}">${conf}%</span>
+                    </div>
+                    <div class="result-desc">${pred.description}</div>
+                    <span class="result-meta">${pred.chapter} · Ch.${pred.chapter_code} · H.${pred.heading_code}</span>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+        document.getElementById('inference-time').innerHTML =
+            `⚡ ${data.inference_time_ms}ms`;
+
+        // Similar examples
+        const simSection = document.getElementById('similar-section');
+        const simContainer = document.getElementById('similar-container');
+        if (data.similar_examples && data.similar_examples.length > 0) {
+            simSection.classList.remove('hidden');
             let simHtml = '';
             data.similar_examples.forEach(ex => {
+                const score = ex.similarity ? (ex.similarity * 100).toFixed(0) + '%' : '';
                 simHtml += `
                     <div class="similar-item">
-                        <span>${ex.text}</span>
-                        <span class="code">${ex.hs_code}</span>
+                        <span class="sim-text">${ex.text}</span>
+                        <span class="sim-code">${ex.hs_code}</span>
+                        ${score ? `<span class="sim-score">${score}</span>` : ''}
                     </div>
                 `;
             });
             simContainer.innerHTML = simHtml;
         }
+    }
 
-        // Highlight query point on UMAP plot
-        async function highlightOnPlot(text) {
-            if (!plotInitialized) return;
+    /* ——————————————————————————————————————————
+       Plot highlighting
+       —————————————————————————————————————————— */
+    async function highlightOnPlot(text) {
+        if (!plotInitialized) return;
 
-            try {
-                const response = await fetch('/embed-query', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ text }),
-                });
-                const data = await response.json();
+        try {
+            const response = await fetch('/embed-query', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text }),
+            });
+            const data = await response.json();
+            if (data.error) return;
 
-                if (data.error) return;
+            const queryTrace = {
+                x: [data.x],
+                y: [data.y],
+                mode: 'markers+text',
+                type: 'scatter',
+                name: 'Your query',
+                marker: {
+                    size: 14,
+                    color: '#ffffff',
+                    symbol: 'diamond',
+                    line: { width: 2, color: 'var(--h-accent)' }
+                },
+                text: ['Query'],
+                textposition: 'top center',
+                textfont: { color: '#ffffff', size: 10, family: "'Inter', sans-serif" },
+                hovertemplate: '<b>Your Query</b><br>' + text.substring(0, 60) + '<extra></extra>',
+                showlegend: true,
+            };
 
-                // Add or update query marker
-                const queryTrace = {
-                    x: [data.x],
-                    y: [data.y],
-                    mode: 'markers+text',
-                    type: 'scatter',
-                    name: '🔍 Query',
-                    marker: {
-                        size: 16,
-                        color: '#ff4757',
-                        symbol: 'star',
-                        line: { width: 2, color: 'white' }
-                    },
-                    text: ['Query'],
-                    textposition: 'top center',
-                    textfont: { color: '#ff4757', size: 11 },
-                    hovertemplate: '<b>Your Query</b><br>' + text.substring(0, 50) + '<extra></extra>',
-                };
+            // Remove previous query trace
+            if (queryMarkerTrace !== null) {
+                Plotly.deleteTraces('umap-plot', -1);
+            }
 
-                const plotDiv = document.getElementById('umap-plot');
-                const numTraces = plotDiv.data.length;
-                
-                // Remove previous query trace if it exists
-                if (queryMarkerTrace !== null) {
-                    Plotly.deleteTraces('umap-plot', -1);
-                }
-                
-                Plotly.addTraces('umap-plot', queryTrace);
-                queryMarkerTrace = true;
+            Plotly.addTraces('umap-plot', queryTrace);
+            queryMarkerTrace = true;
 
-                // Zoom to area around query
-                const padding = 3;
-                Plotly.relayout('umap-plot', {
+            // Smooth zoom to query area
+            const padding = 3;
+            Plotly.animate('umap-plot', {
+                layout: {
                     'xaxis.range': [data.x - padding, data.x + padding],
                     'yaxis.range': [data.y - padding, data.y + padding],
-                });
+                }
+            }, {
+                transition: { duration: 500, easing: 'cubic-in-out' },
+                frame: { duration: 500 },
+            });
 
-            } catch (error) {
-                console.error('Plot highlight error:', error);
-            }
+        } catch (error) {
+            console.error('Plot highlight error:', error);
         }
+    }
 
-        function setExample(text) {
-            document.getElementById('query-input').value = text;
+    /* ——————————————————————————————————————————
+       Actions
+       —————————————————————————————————————————— */
+    function setExample(text) {
+        document.getElementById('query-input').value = text;
+        classify();
+    }
+
+    function clearAll() {
+        document.getElementById('query-input').value = '';
+        document.getElementById('results-section').classList.add('hidden');
+        document.getElementById('similar-section').classList.add('hidden');
+
+        if (plotInitialized && queryMarkerTrace !== null) {
+            Plotly.deleteTraces('umap-plot', -1);
+            queryMarkerTrace = null;
+            resetView();
+        }
+    }
+
+    function resetView() {
+        if (!plotInitialized) return;
+        Plotly.animate('umap-plot', {
+            layout: {
+                'xaxis.autorange': true,
+                'yaxis.autorange': true,
+            }
+        }, {
+            transition: { duration: 400, easing: 'cubic-in-out' },
+            frame: { duration: 400 },
+        });
+    }
+
+    function toggleViewMode() {
+        is3D = !is3D;
+        const icon = document.getElementById('view-toggle-icon');
+        icon.textContent = is3D ? '◈' : '◇';
+        // 3D not fully supported without z-coords; toggle is visual indicator for future
+        // For now re-render 2D
+        if (!is3D) applyFilters();
+    }
+
+    function toggleFullscreen() {
+        isFullscreen = !isFullscreen;
+        document.body.classList.toggle('fullscreen-mode', isFullscreen);
+        document.getElementById('fullscreen-btn').textContent = isFullscreen ? '⊟' : '⛶';
+        setTimeout(() => Plotly.Plots.resize(document.getElementById('umap-plot')), 100);
+    }
+
+    function exportPlot(format) {
+        if (!plotInitialized) return;
+        Plotly.downloadImage('umap-plot', {
+            format: format,
+            width: 1920,
+            height: 1080,
+            filename: 'hs-latent-space',
+        });
+    }
+
+    /* ——————————————————————————————————————————
+       Keyboard shortcuts
+       —————————————————————————————————————————— */
+    document.addEventListener('keydown', (e) => {
+        // Cmd/Ctrl+Enter to classify
+        if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
             classify();
         }
-
-        function clearAll() {
-            document.getElementById('query-input').value = '';
-            document.getElementById('results-section').classList.add('hidden');
-            
-            if (plotInitialized && queryMarkerTrace !== null) {
-                Plotly.deleteTraces('umap-plot', -1);
-                queryMarkerTrace = null;
-                Plotly.relayout('umap-plot', {
-                    'xaxis.autorange': true,
-                    'yaxis.autorange': true,
-                });
-            }
+        // Escape to close detail / exit fullscreen
+        if (e.key === 'Escape') {
+            closePointDetail();
+            if (isFullscreen) toggleFullscreen();
         }
+        // Cmd/Ctrl+K to focus search
+        if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            document.getElementById('point-search').focus();
+        }
+    });
 
-        // Keyboard shortcut
-        document.getElementById('query-input').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-                classify();
-            }
-        });
-
-        // Load visualization on page load
-        window.addEventListener('load', loadVisualization);
+    /* ——————————————————————————————————————————
+       Init
+       —————————————————————————————————————————— */
+    window.addEventListener('load', loadVisualization);
+    window.addEventListener('resize', () => {
+        if (plotInitialized) {
+            Plotly.Plots.resize(document.getElementById('umap-plot'));
+        }
+    });
     </script>
 </body>
 </html>

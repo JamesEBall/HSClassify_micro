@@ -8,3 +8,7 @@ scikit-learn
 pandas
 numpy
 jinja2
+pytesseract
+pdf2image
+pillow
+python-multipart

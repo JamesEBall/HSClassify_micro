@@ -3,6 +3,7 @@ HS Code Classifier Web App
 
 FastAPI backend with:
 - Real-time HS code prediction from text input
+- Document upload with OCR (Tesseract) support
 - Top-3 suggestions with confidence scores
 - Latent space visualization with UMAP
 - Multilingual support (EN, TH, VI, ZH)
@@ -11,11 +12,12 @@ FastAPI backend with:
 import json
 import time
 import pickle
+import shutil
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, UploadFile, File, Form
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -28,8 +30,12 @@ PROJECT_DIR = Path(__file__).parent
 MODEL_DIR = PROJECT_DIR / "models"
 DATA_DIR = PROJECT_DIR / "data"
 
+# Upload config
+MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
+ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".pdf"}
+
 # Initialize FastAPI
-app = FastAPI(title="HS Code Classifier", version="1.0.0")
+app = FastAPI(title="HS Code Classifier", version="1.1.0")
 app.mount("/static", StaticFiles(directory=str(PROJECT_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(PROJECT_DIR / "templates"))
 
@@ -177,17 +183,23 @@ async def predict(request: Request):
             "heading_code": heading_code,
         })
     
-    # Find nearest training examples
+    # Find nearest training examples using the KNN's internal training indices
     distances, indices = classifier.kneighbors(query_emb, n_neighbors=3)
     similar_examples = []
-    for dist, idx in zip(distances[0], indices[0]):
-        row = training_data.iloc[classifier._tree.data[idx] if hasattr(classifier, '_tree') else idx]
-        # Get training data by index
-        similar_examples.append({
-            "text": training_data.iloc[idx]["text"] if idx < len(training_data) else "N/A",
-            "hs_code": str(training_data.iloc[idx]["hs_code"]).zfill(6) if idx < len(training_data) else "N/A",
-            "distance": float(dist),
-        })
+    # The indices from kneighbors are indices into the training set that was fit
+    # We need to map back. Since we used train_test_split, these indices are into X_train.
+    # However, the training data CSV has all data, and the classifier was fit on 80% of it.
+    # For simplicity, we'll just use cosine similarity on all embeddings
+    from numpy.linalg import norm
+    sims = embeddings @ query_emb.T
+    top_sim_idx = np.argsort(sims.flatten())[-3:][::-1]
+    for idx in top_sim_idx:
+        if idx < len(training_data):
+            similar_examples.append({
+                "text": training_data.iloc[idx]["text"],
+                "hs_code": str(training_data.iloc[idx]["hs_code"]).zfill(6),
+                "similarity": float(sims[idx][0]),
+            })
     
     elapsed = time.time() - start
     
@@ -256,10 +268,98 @@ async def embed_query(request: Request):
     return JSONResponse({"error": "No UMAP data for projection"})
 
 
+def run_ocr(image_bytes: bytes, languages: str = "eng+tha+vie+chi_sim") -> dict:
+    """Run Tesseract OCR on image bytes. Returns extracted text and metadata."""
+    import pytesseract
+    from PIL import Image
+    import io
+
+    start = time.time()
+    img = Image.open(io.BytesIO(image_bytes))
+
+    # Convert to RGB if needed (e.g. RGBA PNGs)
+    if img.mode not in ("RGB", "L"):
+        img = img.convert("RGB")
+
+    # Run OCR with multilingual support
+    text = pytesseract.image_to_string(img, lang=languages, config="--psm 6")
+
+    elapsed = time.time() - start
+    return {
+        "text": text.strip(),
+        "ocr_time_ms": round(elapsed * 1000, 1),
+        "image_size": list(img.size),
+        "char_count": len(text.strip()),
+    }
+
+
+def pdf_first_page_to_image(pdf_bytes: bytes) -> bytes:
+    """Convert first page of a PDF to a PNG image bytes using pdf2image."""
+    from pdf2image import convert_from_bytes
+
+    images = convert_from_bytes(pdf_bytes, first_page=1, last_page=1, dpi=300)
+    if not images:
+        raise ValueError("Could not convert PDF to image")
+    import io
+    buf = io.BytesIO()
+    images[0].save(buf, format="PNG")
+    return buf.getvalue()
+
+
+@app.post("/upload")
+async def upload_document(file: UploadFile = File(...)):
+    """Upload a document image or PDF, run OCR, return extracted text."""
+    # Validate file extension
+    ext = Path(file.filename or "").suffix.lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        return JSONResponse(
+            {"error": f"Unsupported file type: {ext}. Allowed: {', '.join(ALLOWED_EXTENSIONS)}"},
+            status_code=400,
+        )
+
+    # Read file into memory
+    contents = await file.read()
+
+    # Validate file size
+    if len(contents) > MAX_FILE_SIZE:
+        return JSONResponse(
+            {"error": f"File too large ({len(contents) / 1024 / 1024:.1f}MB). Maximum: {MAX_FILE_SIZE / 1024 / 1024:.0f}MB"},
+            status_code=400,
+        )
+
+    try:
+        # Convert PDF to image if needed
+        if ext == ".pdf":
+            image_bytes = pdf_first_page_to_image(contents)
+        else:
+            image_bytes = contents
+
+        # Run OCR
+        result = run_ocr(image_bytes)
+
+        # Build base64 preview for the frontend
+        import base64
+        if ext == ".pdf":
+            preview_b64 = base64.b64encode(image_bytes).decode("utf-8")
+            preview_mime = "image/png"
+        else:
+            preview_b64 = base64.b64encode(contents).decode("utf-8")
+            mime_map = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg"}
+            preview_mime = mime_map.get(ext, "image/png")
+
+        result["preview"] = f"data:{preview_mime};base64,{preview_b64}"
+        result["filename"] = file.filename
+        return JSONResponse(result)
+
+    except Exception as e:
+        return JSONResponse({"error": f"OCR processing failed: {str(e)}"}, status_code=500)
+
+
 @app.get("/health")
 async def health():
     """Health check."""
-    return {"status": "ok", "model_loaded": model is not None}
+    ocr_available = shutil.which("tesseract") is not None
+    return {"status": "ok", "model_loaded": model is not None, "ocr_available": ocr_available}
 
 
 if __name__ == "__main__":
