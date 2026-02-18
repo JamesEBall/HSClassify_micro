@@ -1,0 +1,19 @@
+{
+  "accuracy": 0.8671875,
+  "n_examples": 1280,
+  "n_codes": 118,
+  "n_chapters": 39,
+  "languages": [
+    "en",
+    "zh",
+    "th",
+    "vi"
+  ],
+  "model_name": "intfloat/multilingual-e5-small",
+  "embedding_dim": 384,
+  "classifier": "KNN (k=5, cosine distance)",
+  "report_summary": {
+    "weighted_f1": 0.8624565972222222,
+    "macro_f1": 0.8544054344901801
+  }
+}

@@ -1,0 +1,10 @@
+torch
+sentence-transformers
+fastapi
+uvicorn[standard]
+plotly
+umap-learn
+scikit-learn
+pandas
+numpy
+jinja2

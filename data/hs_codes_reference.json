@@ -1,0 +1,474 @@
+{
+  "020130": {
+    "desc": "Fresh or chilled boneless bovine meat",
+    "chapter": "Meat"
+  },
+  "020230": {
+    "desc": "Frozen boneless bovine meat",
+    "chapter": "Meat"
+  },
+  "030389": {
+    "desc": "Other frozen fish",
+    "chapter": "Fish"
+  },
+  "030617": {
+    "desc": "Frozen shrimps and prawns",
+    "chapter": "Fish"
+  },
+  "040120": {
+    "desc": "Milk with fat content 1-6%",
+    "chapter": "Dairy"
+  },
+  "040210": {
+    "desc": "Milk powder, fat content ≤1.5%",
+    "chapter": "Dairy"
+  },
+  "040690": {
+    "desc": "Other cheese",
+    "chapter": "Dairy"
+  },
+  "060110": {
+    "desc": "Bulbs, tubers for planting",
+    "chapter": "Plants"
+  },
+  "070200": {
+    "desc": "Tomatoes, fresh or chilled",
+    "chapter": "Vegetables"
+  },
+  "070310": {
+    "desc": "Fresh or chilled onions and shallots",
+    "chapter": "Vegetables"
+  },
+  "070820": {
+    "desc": "Beans, fresh or chilled",
+    "chapter": "Vegetables"
+  },
+  "080810": {
+    "desc": "Fresh apples",
+    "chapter": "Fruits"
+  },
+  "080300": {
+    "desc": "Bananas, fresh or dried",
+    "chapter": "Fruits"
+  },
+  "080510": {
+    "desc": "Fresh oranges",
+    "chapter": "Fruits"
+  },
+  "090111": {
+    "desc": "Coffee, not roasted, not decaffeinated",
+    "chapter": "Coffee/Tea"
+  },
+  "090210": {
+    "desc": "Green tea in packages ≤3kg",
+    "chapter": "Coffee/Tea"
+  },
+  "090411": {
+    "desc": "Pepper, neither crushed nor ground",
+    "chapter": "Spices"
+  },
+  "100199": {
+    "desc": "Wheat and meslin, other",
+    "chapter": "Cereals"
+  },
+  "100630": {
+    "desc": "Semi-milled or wholly milled rice",
+    "chapter": "Cereals"
+  },
+  "120190": {
+    "desc": "Soya beans, other",
+    "chapter": "Oil Seeds"
+  },
+  "130219": {
+    "desc": "Vegetable saps and extracts",
+    "chapter": "Plants"
+  },
+  "150710": {
+    "desc": "Crude soya-bean oil",
+    "chapter": "Oils"
+  },
+  "151190": {
+    "desc": "Other palm oil",
+    "chapter": "Oils"
+  },
+  "170199": {
+    "desc": "Other cane or beet sugar",
+    "chapter": "Sugar"
+  },
+  "180100": {
+    "desc": "Cocoa beans, whole or broken",
+    "chapter": "Cocoa"
+  },
+  "190531": {
+    "desc": "Sweet biscuits",
+    "chapter": "Food Preparations"
+  },
+  "200990": {
+    "desc": "Mixtures of fruit juices",
+    "chapter": "Food Preparations"
+  },
+  "210111": {
+    "desc": "Extracts and concentrates of coffee",
+    "chapter": "Food Preparations"
+  },
+  "220210": {
+    "desc": "Waters with added sugar or flavour",
+    "chapter": "Beverages"
+  },
+  "220300": {
+    "desc": "Beer made from malt",
+    "chapter": "Beverages"
+  },
+  "220421": {
+    "desc": "Wine in containers ≤2L",
+    "chapter": "Beverages"
+  },
+  "220830": {
+    "desc": "Whiskies",
+    "chapter": "Beverages"
+  },
+  "240120": {
+    "desc": "Tobacco, partly or wholly stemmed",
+    "chapter": "Tobacco"
+  },
+  "252329": {
+    "desc": "Portland cement, other",
+    "chapter": "Minerals"
+  },
+  "270900": {
+    "desc": "Petroleum oils, crude",
+    "chapter": "Mineral Fuels"
+  },
+  "271012": {
+    "desc": "Light petroleum oils",
+    "chapter": "Mineral Fuels"
+  },
+  "271019": {
+    "desc": "Other medium petroleum oils",
+    "chapter": "Mineral Fuels"
+  },
+  "271111": {
+    "desc": "Natural gas, liquefied",
+    "chapter": "Mineral Fuels"
+  },
+  "271600": {
+    "desc": "Electrical energy",
+    "chapter": "Mineral Fuels"
+  },
+  "280461": {
+    "desc": "Silicon, containing ≥99.99% Si",
+    "chapter": "Chemicals"
+  },
+  "290531": {
+    "desc": "Ethylene glycol",
+    "chapter": "Chemicals"
+  },
+  "300490": {
+    "desc": "Other medicaments, packaged for retail",
+    "chapter": "Pharmaceuticals"
+  },
+  "300220": {
+    "desc": "Vaccines for human medicine",
+    "chapter": "Pharmaceuticals"
+  },
+  "310520": {
+    "desc": "Mineral or chemical fertilizers with NPK",
+    "chapter": "Chemicals"
+  },
+  "330499": {
+    "desc": "Other beauty or make-up preparations",
+    "chapter": "Cosmetics"
+  },
+  "340111": {
+    "desc": "Toilet soap in bars",
+    "chapter": "Cosmetics"
+  },
+  "380891": {
+    "desc": "Insecticides",
+    "chapter": "Chemicals"
+  },
+  "390110": {
+    "desc": "Polyethylene, specific gravity <0.94",
+    "chapter": "Plastics"
+  },
+  "390120": {
+    "desc": "Polyethylene, specific gravity ≥0.94",
+    "chapter": "Plastics"
+  },
+  "390760": {
+    "desc": "Polyethylene terephthalate (PET)",
+    "chapter": "Plastics"
+  },
+  "392010": {
+    "desc": "Plates and sheets of ethylene polymers",
+    "chapter": "Plastics"
+  },
+  "392321": {
+    "desc": "Sacks and bags of ethylene polymers",
+    "chapter": "Plastics"
+  },
+  "401110": {
+    "desc": "New pneumatic tyres for cars",
+    "chapter": "Rubber"
+  },
+  "401120": {
+    "desc": "New pneumatic tyres for buses/lorries",
+    "chapter": "Rubber"
+  },
+  "440710": {
+    "desc": "Lumber, coniferous, sawn",
+    "chapter": "Wood"
+  },
+  "470321": {
+    "desc": "Chemical wood pulp, bleached",
+    "chapter": "Paper"
+  },
+  "480256": {
+    "desc": "Uncoated paper, 40-150 g/m²",
+    "chapter": "Paper"
+  },
+  "481910": {
+    "desc": "Cartons, boxes of corrugated paper",
+    "chapter": "Paper"
+  },
+  "520100": {
+    "desc": "Cotton, not carded or combed",
+    "chapter": "Textiles"
+  },
+  "520812": {
+    "desc": "Unbleached plain weave cotton",
+    "chapter": "Textiles"
+  },
+  "540233": {
+    "desc": "Textured polyester yarn",
+    "chapter": "Textiles"
+  },
+  "610910": {
+    "desc": "T-shirts and singlets, cotton, knitted",
+    "chapter": "Garments"
+  },
+  "611030": {
+    "desc": "Jerseys, pullovers of man-made fibres",
+    "chapter": "Garments"
+  },
+  "620342": {
+    "desc": "Men's trousers of cotton",
+    "chapter": "Garments"
+  },
+  "620462": {
+    "desc": "Women's trousers of cotton",
+    "chapter": "Garments"
+  },
+  "630260": {
+    "desc": "Toilet and kitchen linen of cotton",
+    "chapter": "Textiles"
+  },
+  "640399": {
+    "desc": "Other footwear with rubber soles",
+    "chapter": "Footwear"
+  },
+  "640510": {
+    "desc": "Footwear with uppers of leather",
+    "chapter": "Footwear"
+  },
+  "720839": {
+    "desc": "Hot-rolled iron or steel, coil >600mm",
+    "chapter": "Steel"
+  },
+  "720917": {
+    "desc": "Cold-rolled iron or steel coil",
+    "chapter": "Steel"
+  },
+  "730890": {
+    "desc": "Other structures of iron or steel",
+    "chapter": "Steel"
+  },
+  "740311": {
+    "desc": "Refined copper cathodes",
+    "chapter": "Metals"
+  },
+  "760110": {
+    "desc": "Unwrought aluminium, not alloyed",
+    "chapter": "Metals"
+  },
+  "760120": {
+    "desc": "Unwrought aluminium alloys",
+    "chapter": "Metals"
+  },
+  "840734": {
+    "desc": "Spark-ignition engines >1000cc",
+    "chapter": "Machinery"
+  },
+  "841191": {
+    "desc": "Parts of turbo-jets",
+    "chapter": "Machinery"
+  },
+  "841810": {
+    "desc": "Combined refrigerator-freezers",
+    "chapter": "Machinery"
+  },
+  "841821": {
+    "desc": "Household refrigerators, compression",
+    "chapter": "Machinery"
+  },
+  "841911": {
+    "desc": "Instantaneous gas water heaters",
+    "chapter": "Machinery"
+  },
+  "842139": {
+    "desc": "Other filtering or purifying machinery",
+    "chapter": "Machinery"
+  },
+  "842199": {
+    "desc": "Parts for filtering machinery",
+    "chapter": "Machinery"
+  },
+  "843149": {
+    "desc": "Other parts of cranes",
+    "chapter": "Machinery"
+  },
+  "847130": {
+    "desc": "Portable digital computers <10kg",
+    "chapter": "Electronics"
+  },
+  "847141": {
+    "desc": "Other digital processing units",
+    "chapter": "Electronics"
+  },
+  "847150": {
+    "desc": "Processing units for digital machines",
+    "chapter": "Electronics"
+  },
+  "847170": {
+    "desc": "Storage units for computers",
+    "chapter": "Electronics"
+  },
+  "847330": {
+    "desc": "Parts and accessories for computers",
+    "chapter": "Electronics"
+  },
+  "850440": {
+    "desc": "Static converters",
+    "chapter": "Electronics"
+  },
+  "850710": {
+    "desc": "Lead-acid accumulators for vehicles",
+    "chapter": "Electronics"
+  },
+  "850760": {
+    "desc": "Lithium-ion accumulators",
+    "chapter": "Electronics"
+  },
+  "851712": {
+    "desc": "Smartphones",
+    "chapter": "Electronics"
+  },
+  "852580": {
+    "desc": "Television cameras and digital cameras",
+    "chapter": "Electronics"
+  },
+  "852872": {
+    "desc": "Other colour TV receivers",
+    "chapter": "Electronics"
+  },
+  "853400": {
+    "desc": "Printed circuits",
+    "chapter": "Electronics"
+  },
+  "854140": {
+    "desc": "Photosensitive semiconductor devices",
+    "chapter": "Electronics"
+  },
+  "854231": {
+    "desc": "Electronic integrated circuits, processors",
+    "chapter": "Electronics"
+  },
+  "854232": {
+    "desc": "Electronic integrated circuits, memories",
+    "chapter": "Electronics"
+  },
+  "854239": {
+    "desc": "Other electronic integrated circuits",
+    "chapter": "Electronics"
+  },
+  "870120": {
+    "desc": "Road tractors for semi-trailers",
+    "chapter": "Vehicles"
+  },
+  "870323": {
+    "desc": "Motor cars, 1500-3000cc",
+    "chapter": "Vehicles"
+  },
+  "870324": {
+    "desc": "Motor cars, >3000cc",
+    "chapter": "Vehicles"
+  },
+  "870332": {
+    "desc": "Diesel motor cars, 1500-2500cc",
+    "chapter": "Vehicles"
+  },
+  "870340": {
+    "desc": "Electric motor cars (hybrid)",
+    "chapter": "Vehicles"
+  },
+  "870380": {
+    "desc": "Other motor vehicles, electric",
+    "chapter": "Vehicles"
+  },
+  "870899": {
+    "desc": "Other parts for motor vehicles",
+    "chapter": "Vehicles"
+  },
+  "871120": {
+    "desc": "Motorcycles, 50-250cc",
+    "chapter": "Vehicles"
+  },
+  "880230": {
+    "desc": "Aeroplanes, unladen weight 2000-15000kg",
+    "chapter": "Aircraft"
+  },
+  "890190": {
+    "desc": "Other cargo vessels",
+    "chapter": "Ships"
+  },
+  "900190": {
+    "desc": "Optical fibres and bundles",
+    "chapter": "Instruments"
+  },
+  "901839": {
+    "desc": "Other needles, catheters",
+    "chapter": "Medical"
+  },
+  "901890": {
+    "desc": "Other medical instruments",
+    "chapter": "Medical"
+  },
+  "902620": {
+    "desc": "Instruments for measuring pressure",
+    "chapter": "Instruments"
+  },
+  "940161": {
+    "desc": "Upholstered seats with wooden frames",
+    "chapter": "Furniture"
+  },
+  "940180": {
+    "desc": "Other seats",
+    "chapter": "Furniture"
+  },
+  "940350": {
+    "desc": "Wooden bedroom furniture",
+    "chapter": "Furniture"
+  },
+  "940360": {
+    "desc": "Other wooden furniture",
+    "chapter": "Furniture"
+  },
+  "950300": {
+    "desc": "Tricycles, scooters and pedal cars (toys)",
+    "chapter": "Toys"
+  },
+  "950490": {
+    "desc": "Other games and articles for games",
+    "chapter": "Toys"
+  }
+}

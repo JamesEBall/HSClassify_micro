@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HS Code Classifier</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        :root {
+            --bg: #0f1117;
+            --surface: #1a1d27;
+            --surface2: #242836;
+            --border: #2d3348;
+            --text: #e4e8f1;
+            --text-dim: #8b95b0;
+            --accent: #6c63ff;
+            --accent-glow: rgba(108, 99, 255, 0.3);
+            --success: #2ecc71;
+            --warning: #f1c40f;
+            --danger: #e74c3c;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--surface) 0%, var(--surface2) 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 1.5rem 2rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #6c63ff, #48c6ef);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .header .badge {
+            background: var(--accent);
+            color: white;
+            font-size: 0.7rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 999px;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+        }
+
+        .header .stats {
+            margin-left: auto;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+        }
+
+        .main-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            padding: 1.5rem 2rem;
+            max-width: 1600px;
+            margin: 0 auto;
+            min-height: calc(100vh - 80px);
+        }
+
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border);
+            font-weight: 600;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .panel-body {
+            padding: 1.5rem;
+        }
+
+        /* Input Section */
+        .input-section {
+            grid-column: 1;
+        }
+
+        .search-box {
+            position: relative;
+        }
+
+        .search-box textarea {
+            width: 100%;
+            padding: 1rem 1.2rem;
+            background: var(--surface2);
+            border: 2px solid var(--border);
+            border-radius: 10px;
+            color: var(--text);
+            font-size: 1rem;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 100px;
+            transition: border-color 0.2s;
+        }
+
+        .search-box textarea:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px var(--accent-glow);
+        }
+
+        .search-box textarea::placeholder {
+            color: var(--text-dim);
+        }
+
+        .btn {
+            padding: 0.7rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            filter: brightness(1.15);
+            transform: translateY(-1px);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-outline {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text-dim);
+        }
+
+        .btn-outline:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .button-row {
+            display: flex;
+            gap: 0.75rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        /* Example buttons */
+        .examples-section {
+            margin-top: 1.5rem;
+        }
+
+        .examples-section h3 {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.75rem;
+        }
+
+        .example-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .example-chip {
+            padding: 0.4rem 0.8rem;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 0.78rem;
+            color: var(--text-dim);
+            cursor: pointer;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .example-chip:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+            background: rgba(108, 99, 255, 0.1);
+        }
+
+        .example-chip .lang {
+            font-size: 0.65rem;
+            background: var(--accent);
+            color: white;
+            padding: 0.1rem 0.3rem;
+            border-radius: 4px;
+            margin-left: 0.3rem;
+        }
+
+        /* Results */
+        .results-section {
+            margin-top: 1.5rem;
+        }
+
+        .result-card {
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 1rem 1.2rem;
+            margin-bottom: 0.75rem;
+            transition: all 0.2s;
+        }
+
+        .result-card:hover {
+            border-color: var(--accent);
+        }
+
+        .result-card.top-result {
+            border-color: var(--accent);
+            box-shadow: 0 0 12px var(--accent-glow);
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .hs-code-tag {
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .confidence-bar {
+            flex: 1;
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+
+        .confidence-text {
+            font-size: 0.85rem;
+            font-weight: 600;
+            min-width: 50px;
+            text-align: right;
+        }
+
+        .result-desc {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            margin-top: 0.3rem;
+        }
+
+        .result-chapter {
+            display: inline-block;
+            font-size: 0.7rem;
+            background: rgba(108, 99, 255, 0.15);
+            color: var(--accent);
+            padding: 0.15rem 0.5rem;
+            border-radius: 4px;
+            margin-top: 0.4rem;
+        }
+
+        .inference-time {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            margin-top: 1rem;
+            text-align: right;
+        }
+
+        /* Similar examples */
+        .similar-section {
+            margin-top: 1.5rem;
+            padding-top: 1rem;
+            border-top: 1px solid var(--border);
+        }
+
+        .similar-section h3 {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 0.75rem;
+        }
+
+        .similar-item {
+            font-size: 0.8rem;
+            padding: 0.5rem 0.75rem;
+            background: var(--bg);
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .similar-item .code {
+            font-family: monospace;
+            color: var(--accent);
+            font-size: 0.75rem;
+        }
+
+        /* Visualization */
+        .viz-section {
+            grid-column: 2;
+            grid-row: 1 / 3;
+        }
+
+        #umap-plot {
+            width: 100%;
+            height: calc(100vh - 180px);
+            min-height: 500px;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 3rem;
+            color: var(--text-dim);
+        }
+
+        .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 0.75rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Legend */
+        .legend-toggle {
+            font-size: 0.75rem;
+            color: var(--text-dim);
+            cursor: pointer;
+            margin-top: 0.5rem;
+            text-align: center;
+        }
+
+        /* Responsive */
+        @media (max-width: 1024px) {
+            .main-container {
+                grid-template-columns: 1fr;
+                padding: 1rem;
+            }
+            .viz-section {
+                grid-column: 1;
+                grid-row: auto;
+            }
+            #umap-plot {
+                height: 500px;
+            }
+        }
+
+        /* Hidden */
+        .hidden { display: none !important; }
+
+        /* Fade in animation */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease forwards;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏷️ HS Code Classifier</h1>
+        <span class="badge">POC v1.0</span>
+        <div class="stats">
+            {{ metadata.get('n_examples', '?') }} examples · {{ metadata.get('n_codes', '?') }} HS codes · {{ metadata.get('languages', [])|length }} languages · {{ (metadata.get('accuracy', 0) * 100)|round(1) }}% accuracy
+        </div>
+    </div>
+
+    <div class="main-container">
+        <!-- Left Panel: Input + Results -->
+        <div>
+            <div class="panel input-section">
+                <div class="panel-header">
+                    📝 Product Description
+                </div>
+                <div class="panel-body">
+                    <div class="search-box">
+                        <textarea id="query-input" placeholder="Enter a product description in any language...&#10;&#10;Examples:&#10;  • Fresh boneless beef for restaurant supply&#10;  • ข้าวหอมมะลิไทย (Thai jasmine rice)&#10;  • 智能手机 5G (5G smartphone)&#10;  • Tôm đông lạnh xuất khẩu (Frozen shrimp for export)" rows="4"></textarea>
+                    </div>
+                    <div class="button-row">
+                        <button class="btn btn-primary" onclick="classify()" id="classify-btn">
+                            🔍 Classify
+                        </button>
+                        <button class="btn btn-outline" onclick="clearAll()">
+                            ✕ Clear
+                        </button>
+                    </div>
+
+                    <div class="examples-section">
+                        <h3>Try these examples</h3>
+                        <div class="example-chips">
+                            <span class="example-chip" onclick="setExample('Fresh boneless beef cuts for restaurant supply')">Boneless beef <span class="lang">EN</span></span>
+                            <span class="example-chip" onclick="setExample('Laptop computer 14 inch 16GB RAM')">Laptop <span class="lang">EN</span></span>
+                            <span class="example-chip" onclick="setExample('ข้าวหอมมะลิไทย ขัดสี 5% หัก')">ข้าวหอมมะลิ <span class="lang">TH</span></span>
+                            <span class="example-chip" onclick="setExample('冷冻虾仁 去头去壳')">冷冻虾仁 <span class="lang">ZH</span></span>
+                            <span class="example-chip" onclick="setExample('Tôm đông lạnh xuất khẩu')">Tôm đông lạnh <span class="lang">VI</span></span>
+                            <span class="example-chip" onclick="setExample('Cotton T-shirt men printed knitted')">Cotton T-shirt <span class="lang">EN</span></span>
+                            <span class="example-chip" onclick="setExample('Lithium-ion battery pack for electric vehicles')">Li-ion battery <span class="lang">EN</span></span>
+                            <span class="example-chip" onclick="setExample('White refined cane sugar ICUMSA 45')">White sugar <span class="lang">EN</span></span>
+                            <span class="example-chip" onclick="setExample('New radial tyres for passenger cars 205/55R16')">Car tyres <span class="lang">EN</span></span>
+                            <span class="example-chip" onclick="setExample('智能手机 安卓系统 6.7英寸')">智能手机 <span class="lang">ZH</span></span>
+                            <span class="example-chip" onclick="setExample('Samsung Galaxy S24 5G smartphone')">Smartphone <span class="lang">EN</span></span>
+                            <span class="example-chip" onclick="setExample('Electric passenger car battery powered Tesla')">Electric car <span class="lang">EN</span></span>
+                            <span class="example-chip" onclick="setExample('สมาร์ทโฟน แอนดรอยด์ จอ 6.7 นิ้ว')">สมาร์ทโฟน <span class="lang">TH</span></span>
+                            <span class="example-chip" onclick="setExample('Cà phê nhân xanh chưa rang Robusta')">Cà phê <span class="lang">VI</span></span>
+                            <span class="example-chip" onclick="setExample('Hot rolled steel coil width 600mm')">Steel coil <span class="lang">EN</span></span>
+                        </div>
+                    </div>
+
+                    <!-- Results -->
+                    <div class="results-section hidden" id="results-section">
+                        <div id="results-container"></div>
+                        <div class="inference-time" id="inference-time"></div>
+                        <div class="similar-section" id="similar-section">
+                            <h3>📌 Nearest Training Examples</h3>
+                            <div id="similar-container"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Visualization -->
+        <div class="panel viz-section">
+            <div class="panel-header">
+                🌐 Latent Space (UMAP Projection)
+                <span style="margin-left: auto; font-size: 0.75rem; color: var(--text-dim);">
+                    Points colored by HS chapter · Hover for details
+                </span>
+            </div>
+            <div class="panel-body" style="padding: 0.5rem;">
+                <div id="umap-loading" class="loading">
+                    <div class="spinner"></div>
+                    Loading visualization data...
+                </div>
+                <div id="umap-plot"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Color palette for chapters
+        const CHAPTER_COLORS = {
+            'Electronics': '#6c63ff',
+            'Vehicles': '#e74c3c',
+            'Machinery': '#3498db',
+            'Meat': '#c0392b',
+            'Fish': '#2980b9',
+            'Dairy': '#f39c12',
+            'Vegetables': '#27ae60',
+            'Fruits': '#2ecc71',
+            'Coffee/Tea': '#8e6f47',
+            'Cereals': '#d4a739',
+            'Sugar': '#e8c8a0',
+            'Cocoa': '#5d3a1a',
+            'Food Preparations': '#e67e22',
+            'Beverages': '#9b59b6',
+            'Tobacco': '#7f8c8d',
+            'Mineral Fuels': '#34495e',
+            'Minerals': '#95a5a6',
+            'Chemicals': '#1abc9c',
+            'Pharmaceuticals': '#16a085',
+            'Cosmetics': '#ff69b4',
+            'Plastics': '#00bcd4',
+            'Rubber': '#333333',
+            'Wood': '#8d6e63',
+            'Paper': '#bcaaa4',
+            'Textiles': '#ff9800',
+            'Garments': '#ff5722',
+            'Footwear': '#795548',
+            'Steel': '#607d8b',
+            'Metals': '#78909c',
+            'Furniture': '#a1887f',
+            'Toys': '#ffeb3b',
+            'Instruments': '#00e5ff',
+            'Medical': '#76ff03',
+            'Oils': '#ffc107',
+            'Plants': '#4caf50',
+            'Oil Seeds': '#689f38',
+            'Spices': '#d84315',
+            'Aircraft': '#0288d1',
+            'Ships': '#01579b',
+        };
+
+        let plotInitialized = false;
+        let queryMarkerTrace = null;
+
+        // Initialize UMAP plot
+        async function loadVisualization() {
+            try {
+                const response = await fetch('/visualization-data');
+                const data = await response.json();
+                
+                if (!data.points || data.points.length === 0) {
+                    document.getElementById('umap-loading').innerHTML = 'No visualization data available';
+                    return;
+                }
+
+                // Group points by chapter
+                const chapters = {};
+                data.points.forEach(p => {
+                    if (!chapters[p.chapter]) chapters[p.chapter] = { x: [], y: [], text: [], hs: [], customdata: [] };
+                    chapters[p.chapter].x.push(p.x);
+                    chapters[p.chapter].y.push(p.y);
+                    chapters[p.chapter].text.push(p.text);
+                    chapters[p.chapter].hs.push(p.hs_code);
+                    chapters[p.chapter].customdata.push([p.hs_code, p.hs_desc, p.language]);
+                });
+
+                const traces = Object.entries(chapters).map(([chapter, pts]) => ({
+                    x: pts.x,
+                    y: pts.y,
+                    mode: 'markers',
+                    type: 'scatter',
+                    name: chapter,
+                    marker: {
+                        size: 6,
+                        color: CHAPTER_COLORS[chapter] || '#888',
+                        opacity: 0.75,
+                        line: { width: 0.5, color: 'rgba(255,255,255,0.2)' }
+                    },
+                    text: pts.text,
+                    customdata: pts.customdata,
+                    hovertemplate: '<b>%{customdata[0]}</b> - %{customdata[1]}<br>' +
+                                   '%{text}<br>' +
+                                   '<i>Lang: %{customdata[2]}</i><extra>%{fullData.name}</extra>',
+                }));
+
+                const layout = {
+                    paper_bgcolor: '#1a1d27',
+                    plot_bgcolor: '#0f1117',
+                    font: { color: '#8b95b0', family: 'Inter, sans-serif' },
+                    margin: { t: 10, r: 10, b: 40, l: 40 },
+                    xaxis: {
+                        title: 'UMAP 1',
+                        gridcolor: '#2d3348',
+                        zerolinecolor: '#2d3348',
+                    },
+                    yaxis: {
+                        title: 'UMAP 2',
+                        gridcolor: '#2d3348',
+                        zerolinecolor: '#2d3348',
+                    },
+                    legend: {
+                        bgcolor: 'rgba(26,29,39,0.9)',
+                        bordercolor: '#2d3348',
+                        borderwidth: 1,
+                        font: { size: 10 },
+                        itemsizing: 'constant',
+                    },
+                    hovermode: 'closest',
+                };
+
+                document.getElementById('umap-loading').classList.add('hidden');
+                Plotly.newPlot('umap-plot', traces, layout, {
+                    responsive: true,
+                    displayModeBar: true,
+                    modeBarButtonsToRemove: ['lasso2d', 'select2d'],
+                });
+                plotInitialized = true;
+
+            } catch (error) {
+                document.getElementById('umap-loading').innerHTML = 'Error loading visualization: ' + error.message;
+            }
+        }
+
+        // Classify text
+        async function classify() {
+            const input = document.getElementById('query-input');
+            const text = input.value.trim();
+            if (!text) return;
+
+            const btn = document.getElementById('classify-btn');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner" style="width:16px;height:16px;margin:0"></div> Classifying...';
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text }),
+                });
+                const data = await response.json();
+
+                if (data.error) {
+                    alert(data.error);
+                    return;
+                }
+
+                showResults(data);
+                highlightOnPlot(text);
+
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '🔍 Classify';
+            }
+        }
+
+        function showResults(data) {
+            const container = document.getElementById('results-container');
+            const section = document.getElementById('results-section');
+            section.classList.remove('hidden');
+
+            let html = '';
+            data.predictions.forEach((pred, i) => {
+                const conf = (pred.confidence * 100).toFixed(1);
+                const barColor = pred.confidence > 0.7 ? 'var(--success)' : 
+                                 pred.confidence > 0.3 ? 'var(--warning)' : 'var(--danger)';
+                const isTop = i === 0;
+                
+                html += `
+                    <div class="result-card fade-in ${isTop ? 'top-result' : ''}" style="animation-delay: ${i * 0.1}s">
+                        <div class="result-header">
+                            <span class="hs-code-tag">${pred.hs_code}</span>
+                            <div class="confidence-bar">
+                                <div class="confidence-fill" style="width: ${conf}%; background: ${barColor}"></div>
+                            </div>
+                            <span class="confidence-text" style="color: ${barColor}">${conf}%</span>
+                        </div>
+                        <div class="result-desc">${pred.description}</div>
+                        <span class="result-chapter">${pred.chapter} · Ch.${pred.chapter_code} · H.${pred.heading_code}</span>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+            document.getElementById('inference-time').textContent = 
+                `⚡ Inference: ${data.inference_time_ms}ms`;
+
+            // Similar examples
+            const simContainer = document.getElementById('similar-container');
+            let simHtml = '';
+            data.similar_examples.forEach(ex => {
+                simHtml += `
+                    <div class="similar-item">
+                        <span>${ex.text}</span>
+                        <span class="code">${ex.hs_code}</span>
+                    </div>
+                `;
+            });
+            simContainer.innerHTML = simHtml;
+        }
+
+        // Highlight query point on UMAP plot
+        async function highlightOnPlot(text) {
+            if (!plotInitialized) return;
+
+            try {
+                const response = await fetch('/embed-query', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text }),
+                });
+                const data = await response.json();
+
+                if (data.error) return;
+
+                // Add or update query marker
+                const queryTrace = {
+                    x: [data.x],
+                    y: [data.y],
+                    mode: 'markers+text',
+                    type: 'scatter',
+                    name: '🔍 Query',
+                    marker: {
+                        size: 16,
+                        color: '#ff4757',
+                        symbol: 'star',
+                        line: { width: 2, color: 'white' }
+                    },
+                    text: ['Query'],
+                    textposition: 'top center',
+                    textfont: { color: '#ff4757', size: 11 },
+                    hovertemplate: '<b>Your Query</b><br>' + text.substring(0, 50) + '<extra></extra>',
+                };
+
+                const plotDiv = document.getElementById('umap-plot');
+                const numTraces = plotDiv.data.length;
+                
+                // Remove previous query trace if it exists
+                if (queryMarkerTrace !== null) {
+                    Plotly.deleteTraces('umap-plot', -1);
+                }
+                
+                Plotly.addTraces('umap-plot', queryTrace);
+                queryMarkerTrace = true;
+
+                // Zoom to area around query
+                const padding = 3;
+                Plotly.relayout('umap-plot', {
+                    'xaxis.range': [data.x - padding, data.x + padding],
+                    'yaxis.range': [data.y - padding, data.y + padding],
+                });
+
+            } catch (error) {
+                console.error('Plot highlight error:', error);
+            }
+        }
+
+        function setExample(text) {
+            document.getElementById('query-input').value = text;
+            classify();
+        }
+
+        function clearAll() {
+            document.getElementById('query-input').value = '';
+            document.getElementById('results-section').classList.add('hidden');
+            
+            if (plotInitialized && queryMarkerTrace !== null) {
+                Plotly.deleteTraces('umap-plot', -1);
+                queryMarkerTrace = null;
+                Plotly.relayout('umap-plot', {
+                    'xaxis.autorange': true,
+                    'yaxis.autorange': true,
+                });
+            }
+        }
+
+        // Keyboard shortcut
+        document.getElementById('query-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                classify();
+            }
+        });
+
+        // Load visualization on page load
+        window.addEventListener('load', loadVisualization);
+    </script>
+</body>
+</html>
