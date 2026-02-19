@@ -151,9 +151,20 @@ def load_models():
     cache_path = MODEL_DIR / "umap_data.json"
     if cache_path.exists():
         with open(cache_path, encoding="utf-8") as f:
-            umap_data = json.load(f)
-        print(f"Loaded cached UMAP data: {len(umap_data)} points")
+            cached = json.load(f)
+        if isinstance(cached, list) and len(cached) == len(training_data):
+            umap_data = cached
+            print(f"Loaded cached UMAP data: {len(umap_data)} points")
+        else:
+            print(
+                f"Cached UMAP size mismatch (cache={len(cached)}, data={len(training_data)}). "
+                "Recomputing UMAP projection..."
+            )
+            umap_data = None
     else:
+        umap_data = None
+
+    if umap_data is None:
         print("Computing UMAP projection...")
         try:
             import umap

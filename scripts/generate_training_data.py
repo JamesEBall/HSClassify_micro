@@ -723,6 +723,58 @@ def generate_generic_descriptions(hs_code, info, count=10):
     return templates[:count]
 
 
+def augment_records(records, multiplier=3):
+    """Expand dataset size by adding deterministic trade-context variants."""
+    if multiplier <= 1:
+        return records
+
+    trade_context = [
+        "for international wholesale distribution",
+        "for customs clearance and import declaration",
+        "for regional retail supply chain",
+        "for industrial procurement contract",
+        "for export under standard commercial terms",
+        "for bonded warehouse delivery",
+        "for cross-border shipment",
+        "for bulk procurement program",
+    ]
+    shipment_context = [
+        "packed in cartons",
+        "palletized for container shipment",
+        "shipping term CIF",
+        "shipping term FOB",
+        "with standard commercial invoice and packing list",
+        "for 20ft container loading",
+        "for mixed-lot cargo",
+        "for scheduled maritime transport",
+    ]
+
+    expanded = []
+    seen = set()
+
+    for row in records:
+        base_text = row["text"].strip()
+        key = (row["hs_code"], row["language"], base_text)
+        if key not in seen:
+            expanded.append(row)
+            seen.add(key)
+
+        for i in range(multiplier - 1):
+            rnd = random.Random(f"{row['hs_code']}|{row['language']}|{base_text}|{i}")
+            v1 = trade_context[rnd.randrange(len(trade_context))]
+            v2 = shipment_context[rnd.randrange(len(shipment_context))]
+            variant = f"{base_text}, {v1}, {v2}."
+            variant_key = (row["hs_code"], row["language"], variant)
+            if variant_key in seen:
+                continue
+            new_row = dict(row)
+            new_row["text"] = variant
+            expanded.append(new_row)
+            seen.add(variant_key)
+
+    return expanded
+
+
 def generate_dataset():
     """Generate the complete training dataset."""
     data = []
@@ -784,6 +836,12 @@ def generate_dataset():
                     "language": "en"
                 })
     
+    # Expand dataset with synthetic trade-context variants.
+    # Default multiplier=3 gives roughly 3x more latent points.
+    multiplier = int(os.getenv("DATA_AUG_MULTIPLIER", "3"))
+    multiplier = max(1, multiplier)
+    data = augment_records(data, multiplier=multiplier)
+
     # Shuffle
     random.seed(42)
     random.shuffle(data)
