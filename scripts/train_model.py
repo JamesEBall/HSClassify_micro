@@ -37,6 +37,28 @@ def load_data():
     return df
 
 
+def select_training_subset(df):
+    """Select label space for classifier training/eval."""
+    label_space = os.getenv("TRAIN_LABEL_SPACE", "curated").strip().lower()
+    if label_space == "all":
+        print("Training label space: all HS codes from training_data.csv")
+        return df.copy()
+
+    # Default: curated codes from hs_codes_reference.json (matches app behavior).
+    with open(DATA_DIR / "hs_codes_reference.json", "r", encoding="utf-8") as f:
+        hs_ref = json.load(f)
+    curated_codes = {str(c).zfill(6) for c in hs_ref.keys()}
+    subset = df[df["hs_code"].isin(curated_codes)].copy()
+    if subset.empty:
+        print("Warning: curated subset empty; falling back to all codes.")
+        return df.copy()
+
+    print(
+        f"Training label space: curated ({subset['hs_code'].nunique()} codes, {len(subset)} rows)"
+    )
+    return subset
+
+
 def compute_embeddings(model, texts, batch_size=64):
     """Compute embeddings for a list of texts."""
     print(f"Computing embeddings for {len(texts)} texts...")
@@ -116,7 +138,7 @@ def train_classifier(embeddings, labels, n_neighbors=5):
     return clf, le, accuracy, report, X_train, X_test, y_train, y_test
 
 
-def save_artifacts(model, clf, le, embeddings_all, df, accuracy, report):
+def save_artifacts(model, clf, le, embeddings_all, train_df, full_df, accuracy, report):
     """Save all model artifacts."""
     # Save sentence transformer model
     model_path = MODEL_DIR / "sentence_model"
@@ -137,10 +159,13 @@ def save_artifacts(model, clf, le, embeddings_all, df, accuracy, report):
     # Save metadata
     metadata = {
         "accuracy": accuracy,
-        "n_examples": len(df),
-        "n_codes": df["hs_code"].nunique(),
-        "n_chapters": df["hs_chapter"].nunique(),
-        "languages": df["language"].unique().tolist(),
+        "n_examples": len(train_df),
+        "n_codes": train_df["hs_code"].nunique(),
+        "n_chapters": train_df["hs_chapter"].nunique(),
+        "languages": train_df["language"].unique().tolist(),
+        "label_space": os.getenv("TRAIN_LABEL_SPACE", "curated").strip().lower(),
+        "n_examples_full_dataset": len(full_df),
+        "n_codes_full_dataset": full_df["hs_code"].nunique(),
         "model_name": "intfloat/multilingual-e5-small",
         "embedding_dim": embeddings_all.shape[1],
         "classifier": "KNN (k=5, cosine distance)",
@@ -153,7 +178,7 @@ def save_artifacts(model, clf, le, embeddings_all, df, accuracy, report):
         json.dump(metadata, f, indent=2)
     
     # Save the full training data with embeddings index for the app
-    df_out = df.copy()
+    df_out = full_df.copy()
     df_out.to_csv(DATA_DIR / "training_data_indexed.csv", index=False)
     
     print(f"\nAll artifacts saved to {MODEL_DIR}")
@@ -166,28 +191,32 @@ def main():
     print("HS Code Classifier Training")
     print("=" * 60)
     
-    # Load data
-    df = load_data()
+    # Load full data and choose training subset.
+    df_full = load_data()
+    df_train = select_training_subset(df_full)
     
     # Load pre-trained multilingual model
     print("\nLoading multilingual-e5-small model...")
     model = SentenceTransformer("intfloat/multilingual-e5-small")
     print(f"Model loaded. Embedding dimension: {model.get_sentence_embedding_dimension()}")
     
-    # Prepend query prefix for e5 models
-    # e5 models expect "query: " or "passage: " prefix
-    df["text_prefixed"] = df["text"].apply(lambda x: f"query: {x}")
-    
-    # Compute embeddings
-    embeddings = compute_embeddings(model, df["text_prefixed"])
+    # e5 models should use passage prefix for index/training documents.
+    df_full["text_prefixed"] = df_full["text"].apply(lambda x: f"passage: {x}")
+
+    # Compute embeddings for the full dataset (used by app latent visualization).
+    embeddings_full = compute_embeddings(model, df_full["text_prefixed"])
+
+    # Subset embeddings for classifier training/eval.
+    train_idx = df_train.index.to_numpy()
+    embeddings_train = embeddings_full[train_idx]
     
     # Train classifier
     clf, le, accuracy, report, X_train, X_test, y_train, y_test = train_classifier(
-        embeddings, df["hs_code"].astype(str).str.zfill(6)
+        embeddings_train, df_train["hs_code"].astype(str).str.zfill(6)
     )
     
     # Save everything
-    save_artifacts(model, clf, le, embeddings, df, accuracy, report)
+    save_artifacts(model, clf, le, embeddings_full, df_train, df_full, accuracy, report)
     
     # Print example predictions
     print("\n" + "=" * 60)
