@@ -16,6 +16,10 @@ app_port: 7860
 
 Classifies product descriptions into [Harmonized System (HS) codes](https://en.wikipedia.org/wiki/Harmonized_System) using sentence embeddings and k-NN search, with an interactive latent space visualization.
 
+## Live Demo
+
+- Hugging Face Space: [https://huggingface.co/spaces/Troglobyte/MicroHS/](https://huggingface.co/spaces/Troglobyte/MicroHS/)
+
 ## Features
 
 - 🌍 **Multilingual** — supports English, Thai, Vietnamese, and Chinese product descriptions
@@ -44,6 +48,27 @@ uvicorn app:app --reload --port 8000
 ```
 
 Open [http://localhost:8000](http://localhost:8000) to classify products.
+
+## Deployment
+
+- The Space runs in Docker (`sdk: docker`, `app_port: 7860`).
+- OCR endpoints require OS packages; `Dockerfile` installs:
+  - `tesseract-ocr`
+  - `poppler-utils` (for PDF conversion via `pdf2image`)
+- Model loading is resilient in hosted environments:
+  - if local `models/sentence_model` includes weights/tokenizer, it is used
+  - otherwise the app falls back to `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`
+  - optional override: set `SENTENCE_MODEL_NAME`
+
+### Auto Sync (GitHub -> Hugging Face Space)
+
+This repo includes a GitHub Action at `.github/workflows/sync_to_hf_space.yml` that syncs `main` to:
+
+- `spaces/Troglobyte/MicroHS`
+
+Required GitHub secret:
+
+- `HF_TOKEN`: Hugging Face token with write access to the Space
 
 ## How It Works
 
