@@ -83,7 +83,7 @@ def load_models():
     else:
         fallback_model = os.getenv(
             "SENTENCE_MODEL_NAME",
-            "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+            "intfloat/multilingual-e5-small",
         )
         model = SentenceTransformer(fallback_model)
         print(f"Loaded sentence model from Hugging Face Hub: {fallback_model}")
