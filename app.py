@@ -12,6 +12,7 @@ FastAPI backend with:
 """
 
 import json
+import os
 import time
 import pickle
 import re
@@ -67,8 +68,25 @@ def load_models():
     print("Loading models...")
     start = time.time()
     
-    # Load sentence transformer
-    model = SentenceTransformer(str(MODEL_DIR / "sentence_model"))
+    # Load sentence transformer:
+    # prefer local bundled model, fall back to Hub model when large files are not in repo.
+    local_model_dir = MODEL_DIR / "sentence_model"
+    has_local_weights = (
+        (local_model_dir / "model.safetensors").exists()
+        or (local_model_dir / "pytorch_model.bin").exists()
+    )
+    has_local_tokenizer = (local_model_dir / "tokenizer.json").exists()
+
+    if local_model_dir.exists() and has_local_weights and has_local_tokenizer:
+        model = SentenceTransformer(str(local_model_dir))
+        print("Loaded local sentence model from models/sentence_model")
+    else:
+        fallback_model = os.getenv(
+            "SENTENCE_MODEL_NAME",
+            "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+        )
+        model = SentenceTransformer(fallback_model)
+        print(f"Loaded sentence model from Hugging Face Hub: {fallback_model}")
     
     # Load classifier
     with open(MODEL_DIR / "knn_classifier.pkl", "rb") as f:
