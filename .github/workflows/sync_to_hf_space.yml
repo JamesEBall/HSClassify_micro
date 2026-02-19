@@ -32,6 +32,10 @@ jobs:
           tar --exclude=.git -cf - . | (cd "${DEPLOY_DIR}" && tar -xf -)
           cd "${DEPLOY_DIR}"
 
+          # HF Space rejects certain binary artifacts unless using Xet/LFS.
+          # Keep deploy robust by stripping generated model binaries from sync payload.
+          find models -type f \( -name '*.npy' -o -name '*.pkl' \) -delete || true
+
           git init
           git checkout -b main
           git config user.name "github-actions[bot]"
