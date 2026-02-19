@@ -28,6 +28,20 @@ Classifies product descriptions into [Harmonized System (HS) codes](https://en.w
 - 🎯 **KNN-based** — simple, interpretable nearest-neighbor approach using `paraphrase-multilingual-MiniLM-L12-v2`
 - 🧾 **Official HS coverage** — training generation incorporates the [datasets/harmonized-system](https://github.com/datasets/harmonized-system) 6-digit nomenclature
 
+## Dataset Attribution
+
+This project includes HS nomenclature content sourced from:
+
+- [datasets/harmonized-system](https://github.com/datasets/harmonized-system)
+- Upstream references listed by that dataset:
+  - WCO HS nomenclature documentation
+  - UN Comtrade data extraction API
+
+Licensing:
+
+- Upstream HS source data: **ODC Public Domain Dedication and License (PDDL) v1.0**
+- Project-added synthetic multilingual examples and labels: **MIT** (this repo)
+
 ## Quick Start
 
 ```bash
@@ -71,6 +85,23 @@ Required GitHub secret:
 
 - `HF_TOKEN`: Hugging Face token with write access to the Space
 
+## Publish Dataset to Hugging Face Datasets
+
+Use the included publish helper:
+
+```bash
+bash scripts/publish_dataset_to_hf.sh <namespace>/<dataset-repo>
+# Example:
+bash scripts/publish_dataset_to_hf.sh Troglobyte/hsclassify-micro-dataset
+```
+
+The script creates/updates a Dataset repo and uploads:
+
+- `training_data_indexed.csv`
+- `harmonized-system.csv` (attributed source snapshot)
+- `hs_codes_reference.json`
+- Dataset card + attribution notes
+
 ## How It Works
 
 1. **Embedding**: Product descriptions are encoded using `paraphrase-multilingual-MiniLM-L12-v2` (384-dim sentence embeddings)
@@ -81,13 +112,19 @@ Required GitHub secret:
 
 ```
 ├── app.py                  # FastAPI web application
+├── dataset/
+│   ├── README.md           # HF dataset card (attribution + schema)
+│   └── ATTRIBUTION.md      # Source and license attribution details
 ├── requirements.txt        # Python dependencies
 ├── scripts/
 │   ├── generate_training_data.py   # Synthetic training data generator
-│   └── train_model.py              # Model training (embeddings + KNN)
+│   ├── train_model.py              # Model training (embeddings + KNN)
+│   └── publish_dataset_to_hf.sh    # Publish dataset artifacts to HF Datasets
 ├── data/
 │   ├── hs_codes_reference.json     # HS code definitions
-│   └── training_data.csv           # Generated training examples
+│   ├── harmonized-system/harmonized-system.csv  # Upstream HS source snapshot
+│   ├── training_data.csv           # Generated training examples
+│   └── training_data_indexed.csv   # App/latent-ready training examples
 ├── models/                 # Trained artifacts (generated)
 │   ├── sentence_model/     # Cached sentence transformer
 │   ├── embeddings.npy      # Pre-computed embeddings
