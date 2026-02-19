@@ -88,23 +88,61 @@ def load_models():
         model = SentenceTransformer(fallback_model)
         print(f"Loaded sentence model from Hugging Face Hub: {fallback_model}")
     
-    # Load classifier
-    with open(MODEL_DIR / "knn_classifier.pkl", "rb") as f:
-        classifier = pickle.load(f)
-    
-    # Load label encoder
-    with open(MODEL_DIR / "label_encoder.pkl", "rb") as f:
-        label_encoder = pickle.load(f)
-    
     # Load HS code reference
     with open(DATA_DIR / "hs_codes_reference.json") as f:
         hs_reference = json.load(f)
     
     # Load training data
-    training_data = pd.read_csv(DATA_DIR / "training_data_indexed.csv")
-    
-    # Load embeddings
-    embeddings = np.load(MODEL_DIR / "embeddings.npy")
+    training_data_path = DATA_DIR / "training_data_indexed.csv"
+    if not training_data_path.exists():
+        training_data_path = DATA_DIR / "training_data.csv"
+    training_data = pd.read_csv(training_data_path)
+
+    classifier_path = MODEL_DIR / "knn_classifier.pkl"
+    label_encoder_path = MODEL_DIR / "label_encoder.pkl"
+    embeddings_path = MODEL_DIR / "embeddings.npy"
+
+    if classifier_path.exists() and label_encoder_path.exists() and embeddings_path.exists():
+        with open(classifier_path, "rb") as f:
+            classifier = pickle.load(f)
+        with open(label_encoder_path, "rb") as f:
+            label_encoder = pickle.load(f)
+        embeddings = np.load(embeddings_path)
+        print("Loaded classifier artifacts from models/")
+    else:
+        print("Classifier artifacts missing; rebuilding from training data...")
+        texts = training_data["text"].fillna("").astype(str).tolist()
+        if not texts:
+            raise RuntimeError("No training rows available to rebuild classifier.")
+
+        # Keep query/passages prefixing consistent with inference flow.
+        embeddings = model.encode(
+            [f"passage: {text}" for text in texts],
+            normalize_embeddings=True,
+            convert_to_numpy=True,
+        )
+
+        hs_labels = training_data["hs_code"].astype(str).str.zfill(6).tolist()
+        label_encoder = LabelEncoder()
+        y = label_encoder.fit_transform(hs_labels)
+
+        classifier = KNeighborsClassifier(
+            n_neighbors=min(5, len(texts)),
+            metric="cosine",
+            weights="distance",
+        )
+        classifier.fit(embeddings, y)
+
+        # Best effort cache so next startup can load artifacts directly.
+        try:
+            np.save(embeddings_path, embeddings)
+            with open(classifier_path, "wb") as f:
+                pickle.dump(classifier, f)
+            with open(label_encoder_path, "wb") as f:
+                pickle.dump(label_encoder, f)
+            print("Saved rebuilt classifier artifacts to models/")
+        except Exception as e:
+            print(f"Warning: could not cache rebuilt artifacts: {e}")
     
     # Load HS dataset (official harmonized-system data)
     hs_dataset = get_dataset()
