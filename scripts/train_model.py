@@ -9,6 +9,7 @@ import json
 import os
 import sys
 import time
+import math
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -56,11 +57,33 @@ def train_classifier(embeddings, labels, n_neighbors=5):
     # Encode labels
     le = LabelEncoder()
     y = le.fit_transform(labels)
+    n_samples = len(y)
+    n_classes = len(le.classes_)
+    class_counts = np.bincount(y)
+    min_class_count = int(class_counts.min()) if len(class_counts) else 0
     
     # Split data
-    X_train, X_test, y_train, y_test = train_test_split(
-        embeddings, y, test_size=0.2, random_state=42, stratify=y
+    test_size = 0.2
+    n_test = math.ceil(n_samples * test_size)
+    n_train = n_samples - n_test
+    can_stratify = (
+        min_class_count >= 2
+        and n_test >= n_classes
+        and n_train >= n_classes
     )
+    if can_stratify:
+        X_train, X_test, y_train, y_test = train_test_split(
+            embeddings, y, test_size=test_size, random_state=42, stratify=y
+        )
+    else:
+        print(
+            "Warning: skipping stratified split "
+            f"(samples={n_samples}, classes={n_classes}, min_class_count={min_class_count}, "
+            f"train={n_train}, test={n_test})."
+        )
+        X_train, X_test, y_train, y_test = train_test_split(
+            embeddings, y, test_size=test_size, random_state=42, stratify=None
+        )
     
     print(f"\nTraining set: {len(X_train)}, Test set: {len(X_test)}")
     
@@ -77,10 +100,12 @@ def train_classifier(embeddings, labels, n_neighbors=5):
     
     # Detailed report (top codes only for readability)
     report = classification_report(
-        y_test, y_pred,
+        y_test,
+        y_pred,
+        labels=np.arange(n_classes),
         target_names=le.classes_,
         output_dict=True,
-        zero_division=0
+        zero_division=0,
     )
     
     # Print summary
