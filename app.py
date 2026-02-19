@@ -59,11 +59,12 @@ training_data = None
 embeddings = None
 umap_data = None
 hs_dataset = None
+classifier_training_indices = None
 
 
 def load_models():
     """Load all model artifacts on startup."""
-    global model, classifier, label_encoder, hs_reference, training_data, embeddings, umap_data, hs_dataset
+    global model, classifier, label_encoder, hs_reference, training_data, embeddings, umap_data, hs_dataset, classifier_training_indices
     
     print("Loading models...")
     start = time.time()
@@ -130,7 +131,7 @@ def load_models():
         )
 
     def rebuild_classifier_on_curated_codes():
-        global classifier, label_encoder
+        global classifier, label_encoder, classifier_training_indices
         classifier_df = training_data[training_data["hs_code"].isin(core_codes)].copy()
         if classifier_df.empty:
             classifier_df = training_data
@@ -147,6 +148,7 @@ def load_models():
             weights="distance",
         )
         classifier.fit(clf_embeddings, y)
+        classifier_training_indices = clf_indices
         print(
             f"Rebuilt classifier on {len(classifier_df)} rows "
             f"across {len(set(hs_labels))} curated HS codes"
@@ -187,6 +189,23 @@ def load_models():
         if invalid_artifacts:
             print("Classifier artifacts not aligned with curated HS set; rebuilding classifier...")
             rebuild_classifier_on_curated_codes()
+        else:
+            # Map KNN fit row indices back to full training_data row indices for latent neighbors.
+            classifier_df = training_data[training_data["hs_code"].isin(artifact_codes)].copy()
+            classifier_training_indices = classifier_df.index.to_numpy()
+            n_fit = int(getattr(classifier, "n_samples_fit_", 0))
+            if n_fit <= 0:
+                fit_x = getattr(classifier, "_fit_X", None)
+                n_fit = int(fit_x.shape[0]) if fit_x is not None else 0
+
+            if n_fit > 0 and len(classifier_training_indices) == n_fit:
+                print(f"Mapped classifier indices to {len(classifier_training_indices)} training rows")
+            else:
+                print(
+                    "Classifier index mapping mismatch "
+                    f"(mapped={len(classifier_training_indices)}, fit={n_fit}); rebuilding classifier..."
+                )
+                rebuild_classifier_on_curated_codes()
     else:
         print("Classifier artifacts missing; rebuilding from training data...")
         embeddings = compute_full_embeddings()
@@ -561,19 +580,52 @@ async def embed_query(request: Request):
         convert_to_numpy=True
     )
     
-    distances, indices = classifier.kneighbors(query_emb, n_neighbors=5)
+    n_fit = int(getattr(classifier, "n_samples_fit_", 0))
+    if n_fit <= 0:
+        fit_x = getattr(classifier, "_fit_X", None)
+        n_fit = int(fit_x.shape[0]) if fit_x is not None else 0
+    if n_fit <= 0:
+        return JSONResponse({"error": "Classifier has no fitted rows"}, status_code=500)
+
+    n_neighbors = min(5, n_fit)
+    distances, indices = classifier.kneighbors(query_emb, n_neighbors=n_neighbors)
     
     if umap_data and len(umap_data) > 0:
         weights = 1.0 / (distances[0] + 1e-6)
         weights = weights / weights.sum()
         
-        x = sum(umap_data[idx]["x"] * w for idx, w in zip(indices[0], weights) if idx < len(umap_data))
-        y = sum(umap_data[idx]["y"] * w for idx, w in zip(indices[0], weights) if idx < len(umap_data))
+        mapped_indices = []
+        for idx in indices[0]:
+            mapped_idx = int(idx)
+            if (
+                classifier_training_indices is not None
+                and mapped_idx < len(classifier_training_indices)
+            ):
+                mapped_idx = int(classifier_training_indices[mapped_idx])
+            mapped_indices.append(mapped_idx)
+
+        x = sum(
+            umap_data[idx]["x"] * w
+            for idx, w in zip(mapped_indices, weights)
+            if 0 <= idx < len(umap_data)
+        )
+        y = sum(
+            umap_data[idx]["y"] * w
+            for idx, w in zip(mapped_indices, weights)
+            if 0 <= idx < len(umap_data)
+        )
         
         neighbors = []
-        for idx in indices[0]:
+        for idx, dist in zip(mapped_indices, distances[0]):
             if idx < len(umap_data):
-                neighbors.append(umap_data[idx])
+                point = umap_data[idx]
+                # cosine distance in [0, 2] for normalized vectors; lower is closer
+                similarity = max(0.0, min(1.0, 1.0 - float(dist)))
+                neighbors.append({
+                    **point,
+                    "distance": float(dist),
+                    "similarity": similarity,
+                })
         
         return JSONResponse({
             "x": float(x),

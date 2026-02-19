@@ -707,6 +707,82 @@
             margin-bottom: 0.375rem;
         }
 
+        .latent-distance-panel {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            width: min(360px, calc(100% - 2rem));
+            background: rgba(10,10,10,0.92);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--h-border-mid);
+            border-radius: var(--h-radius-lg);
+            padding: 0.8rem;
+            z-index: 9;
+            display: none;
+        }
+
+        .latent-distance-panel.visible { display: block; }
+
+        .latent-distance-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.5rem;
+            margin-bottom: 0.45rem;
+        }
+
+        .latent-distance-title {
+            font-size: 0.6875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--h-text-4);
+        }
+
+        .latent-distance-row {
+            display: grid;
+            grid-template-columns: 20px 1fr auto auto;
+            gap: 0.45rem;
+            align-items: center;
+            font-size: 0.6875rem;
+            padding: 0.25rem 0;
+            border-top: 1px solid rgba(255,255,255,0.03);
+        }
+
+        .latent-distance-row:first-child {
+            border-top: none;
+            padding-top: 0;
+        }
+
+        .latent-distance-rank {
+            font-family: var(--h-mono);
+            color: var(--h-text-4);
+        }
+
+        .latent-distance-code {
+            font-family: var(--h-mono);
+            color: var(--h-text);
+            white-space: nowrap;
+        }
+
+        .latent-distance-sim {
+            font-family: var(--h-mono);
+            color: var(--h-emerald);
+            white-space: nowrap;
+        }
+
+        .latent-distance-dist {
+            font-family: var(--h-mono);
+            color: var(--h-text-3);
+            white-space: nowrap;
+        }
+
+        .latent-distance-note {
+            font-size: 0.625rem;
+            color: var(--h-text-4);
+            margin-top: 0.45rem;
+        }
+
         /* ============================================
            Animations
            ============================================ */
@@ -930,6 +1006,12 @@
 
                 <!-- Plot -->
                 <div id="umap-plot" style="position:relative;">
+                    <div class="latent-distance-panel" id="latent-distance-panel">
+                        <div class="latent-distance-header">
+                            <span class="latent-distance-title">Query Latent Distances</span>
+                        </div>
+                        <div id="latent-distance-body"></div>
+                    </div>
                     <!-- Point detail overlay -->
                     <div class="point-detail" id="point-detail">
                         <div class="pd-header">
@@ -1003,7 +1085,7 @@
        State
        —————————————————————————————————————————— */
     let plotInitialized = false;
-    let queryMarkerTrace = null;
+    let queryOverlayTraceCount = 0;
     let allPoints = [];
     let allChapters = [];
     let allLanguages = [];
@@ -1105,16 +1187,19 @@
             chapters[p.category].customdata.push([p.hs_code, p.hs_desc, p.language, p.text, p.category]);
         });
 
-        const traces = Object.entries(chapters).map(([chapter, pts]) => ({
+        const chapterEntries = Object.entries(chapters);
+        const showLegend = chapterEntries.length <= 12;
+        const traces = chapterEntries.map(([chapter, pts]) => ({
             x: pts.x,
             y: pts.y,
             mode: 'markers',
             type: is3D ? 'scatter3d' : 'scatter',
             name: chapter,
+            showlegend: showLegend,
             marker: {
-                size: is3D ? 3 : 5,
+                size: is3D ? 2.5 : 4,
                 color: categoryColorMap[chapter] || '#6b7280',
-                opacity: 0.8,
+                opacity: 0.65,
                 line: { width: 0, color: 'transparent' }
             },
             text: pts.text,
@@ -1131,6 +1216,7 @@
         const layout = {
             paper_bgcolor: '#0a0a0a',
             plot_bgcolor: '#0a0a0a',
+            showlegend: showLegend,
             font: {
                 color: 'rgba(255,255,255,0.3)',
                 family: "'Inter', sans-serif",
@@ -1179,7 +1265,8 @@
 
         Plotly.react('umap-plot', traces, layout, config);
         plotInitialized = true;
-        queryMarkerTrace = null;
+        queryOverlayTraceCount = 0;
+        renderLatentDistancePanel(null);
 
         // Click handler for points
         const plotEl = document.getElementById('umap-plot');
@@ -1193,16 +1280,57 @@
     }
 
     function showPointDetail(customdata) {
-        const [code, desc, lang, text] = customdata;
+        const [code, desc, lang, text, category] = customdata;
         document.getElementById('pd-code').textContent = `${code} — ${desc}`;
         document.getElementById('pd-desc').textContent = text;
         document.getElementById('pd-similar').innerHTML =
-            `<div class="pd-similar-label">Language: ${lang}</div>`;
+            `<div class="pd-similar-label">Language: ${lang} · ${category}</div>`;
         document.getElementById('point-detail').classList.add('visible');
     }
 
     function closePointDetail() {
         document.getElementById('point-detail').classList.remove('visible');
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function renderLatentDistancePanel(payload) {
+        const panel = document.getElementById('latent-distance-panel');
+        const body = document.getElementById('latent-distance-body');
+        if (!payload || !payload.neighbors || payload.neighbors.length === 0) {
+            panel.classList.remove('visible');
+            body.innerHTML = '';
+            return;
+        }
+
+        const topPred = payload.predictions && payload.predictions.length > 0
+            ? payload.predictions[0].hs_code
+            : null;
+
+        body.innerHTML = payload.neighbors.map((n, i) => {
+            const hsCode = String(n.hs_code || '').padStart(6, '0');
+            const similarityPct = ((n.similarity || 0) * 100).toFixed(1);
+            const distanceVal = (n.distance || 0).toFixed(4);
+            const topMarker = topPred === hsCode ? ' ★' : '';
+            const category = escapeHtml(n.chapter_name || n.chapter || 'Unknown');
+            return `
+                <div class="latent-distance-row">
+                    <span class="latent-distance-rank">${i + 1}</span>
+                    <span class="latent-distance-code">${escapeHtml(hsCode)}${topMarker}<br><span style="color:var(--h-text-4);font-size:0.625rem">${category}</span></span>
+                    <span class="latent-distance-sim">sim ${similarityPct}%</span>
+                    <span class="latent-distance-dist">d ${distanceVal}</span>
+                </div>
+            `;
+        }).join('') + '<div class="latent-distance-note">Cosine distance in embedding space: lower is closer.</div>';
+
+        panel.classList.add('visible');
     }
 
     /* ——————————————————————————————————————————
@@ -1231,7 +1359,7 @@
             }
 
             showResults(data);
-            highlightOnPlot(text);
+            highlightOnPlot(text, data);
         } catch (error) {
             alert('Error: ' + error.message);
         } finally {
@@ -1294,7 +1422,23 @@
     /* ——————————————————————————————————————————
        Plot highlighting
        —————————————————————————————————————————— */
-    async function highlightOnPlot(text) {
+    function clearQueryOverlay() {
+        if (!plotInitialized || queryOverlayTraceCount <= 0) return;
+        const plotEl = document.getElementById('umap-plot');
+        const totalTraces = (plotEl.data || []).length;
+        const startIdx = Math.max(totalTraces - queryOverlayTraceCount, 0);
+        const deleteIndices = [];
+        for (let i = startIdx; i < totalTraces; i++) {
+            deleteIndices.push(i);
+        }
+        if (deleteIndices.length > 0) {
+            Plotly.deleteTraces('umap-plot', deleteIndices);
+        }
+        queryOverlayTraceCount = 0;
+        renderLatentDistancePanel(null);
+    }
+
+    async function highlightOnPlot(text, resultData = null) {
         if (!plotInitialized) return;
 
         try {
@@ -1305,6 +1449,42 @@
             });
             const data = await response.json();
             if (data.error) return;
+            const neighbors = (data.neighbors || []).slice(0, 3);
+            if (neighbors.length === 0) return;
+
+            const neighborTrace = {
+                x: neighbors.map(n => n.x),
+                y: neighbors.map(n => n.y),
+                mode: 'markers',
+                type: 'scatter',
+                name: 'Nearest neighbors',
+                marker: {
+                    size: neighbors.map(n => 8 + Math.max(0, (1 - n.distance) * 10)),
+                    color: neighbors.map(n => n.similarity),
+                    colorscale: [
+                        [0, '#ef4444'],
+                        [0.5, '#f59e0b'],
+                        [1, '#10b981'],
+                    ],
+                    cmin: 0,
+                    cmax: 1,
+                    line: { width: 1, color: 'rgba(255,255,255,0.65)' },
+                    opacity: 0.95,
+                },
+                customdata: neighbors.map(n => [
+                    String(n.hs_code || '').padStart(6, '0'),
+                    n.hs_desc || 'Unknown',
+                    n.distance || 0,
+                    n.similarity || 0,
+                    n.chapter_name || n.chapter || 'Unknown',
+                ]),
+                hovertemplate:
+                    '<b>%{customdata[0]}</b> · %{customdata[4]}<br>' +
+                    '%{customdata[1]}<br>' +
+                    'distance: %{customdata[2]:.4f}<br>' +
+                    'similarity: %{customdata[3]:.2%}<extra></extra>',
+                showlegend: false,
+            };
 
             const queryTrace = {
                 x: [data.x],
@@ -1325,13 +1505,14 @@
                 showlegend: true,
             };
 
-            // Remove previous query trace
-            if (queryMarkerTrace !== null) {
-                Plotly.deleteTraces('umap-plot', -1);
-            }
+            clearQueryOverlay();
 
-            Plotly.addTraces('umap-plot', queryTrace);
-            queryMarkerTrace = true;
+            Plotly.addTraces('umap-plot', [neighborTrace, queryTrace]);
+            queryOverlayTraceCount = 2;
+            renderLatentDistancePanel({
+                neighbors,
+                predictions: resultData && resultData.predictions ? resultData.predictions : [],
+            });
 
             // Smooth zoom to query area
             const padding = 3;
@@ -1363,9 +1544,8 @@
         document.getElementById('results-section').classList.add('hidden');
         document.getElementById('similar-section').classList.add('hidden');
 
-        if (plotInitialized && queryMarkerTrace !== null) {
-            Plotly.deleteTraces('umap-plot', -1);
-            queryMarkerTrace = null;
+        if (plotInitialized && queryOverlayTraceCount > 0) {
+            clearQueryOverlay();
             resetView();
         }
     }
