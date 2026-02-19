@@ -801,6 +801,19 @@ def load_official_hs_subheadings():
     return rows
 
 
+def make_record(text, hs_code, chapter_name, hs_desc, language):
+    """Create a normalized training row with consistent chapter coding."""
+    hs_code = str(hs_code).zfill(6)
+    return {
+        "text": text,
+        "hs_code": hs_code,
+        "hs_chapter": f"HS {hs_code[:2]}",
+        "hs_chapter_name": chapter_name,
+        "hs_desc": hs_desc,
+        "language": language,
+    }
+
+
 def add_official_hs_examples(data):
     """Append official HS descriptions as extra English training examples."""
     variants = max(1, int(os.getenv("OFFICIAL_HS_VARIANTS", "1")))
@@ -821,13 +834,7 @@ def add_official_hs_examples(data):
         for i in range(variants):
             template = base_templates[min(i, len(base_templates) - 1)]
             text = template.format(desc=desc.lower() if i > 0 else desc)
-            data.append({
-                "text": text,
-                "hs_code": hs_code,
-                "hs_chapter": info["chapter"],
-                "hs_desc": info["desc"],
-                "language": "en",
-            })
+            data.append(make_record(text, hs_code, info["chapter"], info["desc"], "en"))
 
     # De-duplicate exact same (text, hs_code, language) rows.
     unique = {}
@@ -844,59 +851,29 @@ def generate_dataset():
     # Add English templates
     for hs_code, templates in ENGLISH_TEMPLATES.items():
         for text in templates:
-            data.append({
-                "text": text,
-                "hs_code": hs_code,
-                "hs_chapter": HS_CODES[hs_code]["chapter"],
-                "hs_desc": HS_CODES[hs_code]["desc"],
-                "language": "en"
-            })
+            data.append(make_record(text, hs_code, HS_CODES[hs_code]["chapter"], HS_CODES[hs_code]["desc"], "en"))
     
     # Add Thai templates
     for hs_code, templates in THAI_TEMPLATES.items():
         for text in templates:
-            data.append({
-                "text": text,
-                "hs_code": hs_code,
-                "hs_chapter": HS_CODES[hs_code]["chapter"],
-                "hs_desc": HS_CODES[hs_code]["desc"],
-                "language": "th"
-            })
+            data.append(make_record(text, hs_code, HS_CODES[hs_code]["chapter"], HS_CODES[hs_code]["desc"], "th"))
     
     # Add Vietnamese templates
     for hs_code, templates in VIETNAMESE_TEMPLATES.items():
         for text in templates:
-            data.append({
-                "text": text,
-                "hs_code": hs_code,
-                "hs_chapter": HS_CODES[hs_code]["chapter"],
-                "hs_desc": HS_CODES[hs_code]["desc"],
-                "language": "vi"
-            })
+            data.append(make_record(text, hs_code, HS_CODES[hs_code]["chapter"], HS_CODES[hs_code]["desc"], "vi"))
     
     # Add Chinese templates
     for hs_code, templates in CHINESE_TEMPLATES.items():
         for text in templates:
-            data.append({
-                "text": text,
-                "hs_code": hs_code,
-                "hs_chapter": HS_CODES[hs_code]["chapter"],
-                "hs_desc": HS_CODES[hs_code]["desc"],
-                "language": "zh"
-            })
+            data.append(make_record(text, hs_code, HS_CODES[hs_code]["chapter"], HS_CODES[hs_code]["desc"], "zh"))
     
     # Fill remaining HS codes with generic descriptions
     for hs_code, info in HS_CODES.items():
         if hs_code not in ENGLISH_TEMPLATES:
             generic = generate_generic_descriptions(hs_code, info, 10)
             for text in generic:
-                data.append({
-                    "text": text,
-                    "hs_code": hs_code,
-                    "hs_chapter": info["chapter"],
-                    "hs_desc": info["desc"],
-                    "language": "en"
-                })
+                data.append(make_record(text, hs_code, info["chapter"], info["desc"], "en"))
 
     # Add official 6-digit HS subheadings from datasets/harmonized-system.
     data = add_official_hs_examples(data)
@@ -923,7 +900,10 @@ def main():
     # Save as CSV
     csv_path = os.path.join(output_dir, "training_data.csv")
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=["text", "hs_code", "hs_chapter", "hs_desc", "language"])
+        writer = csv.DictWriter(
+            f,
+            fieldnames=["text", "hs_code", "hs_chapter", "hs_chapter_name", "hs_desc", "language"],
+        )
         writer.writeheader()
         writer.writerows(data)
     
