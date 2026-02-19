@@ -136,8 +136,7 @@ The script creates/updates a Dataset repo and uploads:
 
 ## Context
 
-Built as a rapid POC exploring whether multilingual sentence embeddings can simplify HS code classification for customs authorities in developing Asian economies — part of broader digital public goods work with the Asian Development Bank (ADB).
-
+Built as a rapid POC exploring whether multilingual sentence embeddings can simplify HS code classification for customs authorities.
 ## License
 
 MIT — see [LICENSE](LICENSE)
