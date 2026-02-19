@@ -9,8 +9,7 @@ Classifies product descriptions into [Harmonized System (HS) codes](https://en.w
 
 ## Live Demo
 
-- Hugging Face Space: [https://huggingface.co/spaces/Troglobyte/MicroHS/](https://huggingface.co/spaces/Troglobyte/MicroHS/)
-
+- Hugging Face Space: [[https://huggingface.co/spaces/Troglobyte/MicroHS/](https://huggingface.co/spaces/Mead0w1ark/MicroHS)]
 ## Features
 
 - 🌍 **Multilingual** — example supports English, Thai, Vietnamese, and Chinese product descriptions
