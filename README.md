@@ -13,7 +13,7 @@ Classifies product descriptions into [Harmonized System (HS) codes](https://en.w
 
 ## Features
 
-- 🌍 **Multilingual** — supports English, Thai, Vietnamese, and Chinese product descriptions
+- 🌍 **Multilingual** — example supports English, Thai, Vietnamese, and Chinese product descriptions
 - ⚡ **Real-time classification** — top-3 HS code predictions with confidence scores
 - 📊 **Latent space visualization** — interactive UMAP plot showing embedding clusters
 - 🎯 **KNN-based** — simple, interpretable nearest-neighbor approach using `paraphrase-multilingual-MiniLM-L12-v2`
