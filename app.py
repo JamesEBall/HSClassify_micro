@@ -97,6 +97,7 @@ def load_models():
     if not training_data_path.exists():
         training_data_path = DATA_DIR / "training_data.csv"
     training_data = pd.read_csv(training_data_path)
+    training_data["hs_code"] = training_data["hs_code"].astype(str).str.zfill(6)
 
     classifier_path = MODEL_DIR / "knn_classifier.pkl"
     label_encoder_path = MODEL_DIR / "label_encoder.pkl"
@@ -122,16 +123,29 @@ def load_models():
             convert_to_numpy=True,
         )
 
-        hs_labels = training_data["hs_code"].astype(str).str.zfill(6).tolist()
+        # Keep prediction quality stable by training the classifier on the curated HS set.
+        # We still keep full embeddings/training_data for latent visualization.
+        core_codes = set(hs_reference.keys())
+        classifier_df = training_data[training_data["hs_code"].isin(core_codes)].copy()
+        if classifier_df.empty:
+            classifier_df = training_data
+
+        clf_indices = classifier_df.index.to_numpy()
+        clf_embeddings = embeddings[clf_indices]
+        hs_labels = classifier_df["hs_code"].tolist()
         label_encoder = LabelEncoder()
         y = label_encoder.fit_transform(hs_labels)
 
         classifier = KNeighborsClassifier(
-            n_neighbors=min(5, len(texts)),
+            n_neighbors=min(5, len(classifier_df)),
             metric="cosine",
             weights="distance",
         )
-        classifier.fit(embeddings, y)
+        classifier.fit(clf_embeddings, y)
+        print(
+            f"Rebuilt classifier on {len(classifier_df)} rows "
+            f"across {len(set(hs_labels))} curated HS codes"
+        )
 
         # Best effort cache so next startup can load artifacts directly.
         try:
