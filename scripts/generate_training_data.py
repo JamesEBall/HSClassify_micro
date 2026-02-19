@@ -801,13 +801,45 @@ def load_official_hs_subheadings():
     return rows
 
 
+def load_official_chapter_labels():
+    """Build chapter code -> human label map from official HS level-2 rows."""
+    hs_path = os.path.join(
+        os.path.dirname(__file__),
+        "..",
+        "data",
+        "harmonized-system",
+        "harmonized-system.csv",
+    )
+    labels = {}
+    if not os.path.exists(hs_path):
+        return labels
+
+    with open(hs_path, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            if row.get("level") != "2":
+                continue
+            code = row.get("hscode", "").strip()
+            desc = row.get("description", "").strip()
+            if len(code) == 2 and code.isdigit() and desc:
+                labels[code] = desc
+    return labels
+
+
+OFFICIAL_CHAPTER_LABELS = load_official_chapter_labels()
+
+
 def make_record(text, hs_code, chapter_name, hs_desc, language):
-    """Create a normalized training row with consistent chapter coding."""
+    """Create a normalized training row with human chapter label + chapter code."""
     hs_code = str(hs_code).zfill(6)
+    chapter_2 = hs_code[:2]
+    chapter_code = f"HS {chapter_2}"
+    human_label = OFFICIAL_CHAPTER_LABELS.get(chapter_2, chapter_name)
     return {
         "text": text,
         "hs_code": hs_code,
-        "hs_chapter": f"HS {hs_code[:2]}",
+        "hs_chapter": human_label,
+        "hs_chapter_code": chapter_code,
         "hs_chapter_name": chapter_name,
         "hs_desc": hs_desc,
         "language": language,
@@ -902,7 +934,15 @@ def main():
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(
             f,
-            fieldnames=["text", "hs_code", "hs_chapter", "hs_chapter_name", "hs_desc", "language"],
+            fieldnames=[
+                "text",
+                "hs_code",
+                "hs_chapter",
+                "hs_chapter_code",
+                "hs_chapter_name",
+                "hs_desc",
+                "language",
+            ],
         )
         writer.writeheader()
         writer.writerows(data)
