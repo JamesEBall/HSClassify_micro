@@ -12,7 +12,7 @@ app_port: 7860
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
-**Lightweight HS code classifier using multilingual embeddings** — a proof-of-concept for ADB customs digitization.
+**Machine learning model for multilingual HS/HTS classification** for trade finance and customs workflows, built with FastAPI + OCR.
 
 Classifies product descriptions into [Harmonized System (HS) codes](https://en.wikipedia.org/wiki/Harmonized_System) using sentence embeddings and k-NN search, with an interactive latent space visualization.
 
