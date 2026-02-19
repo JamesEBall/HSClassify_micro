@@ -990,6 +990,11 @@
         'Aircraft':          '#2563eb',
         'Ships':             '#1d4ed8',
     };
+    const CATEGORY_PALETTE = [
+        '#3b82f6', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899',
+        '#06b6d4', '#84cc16', '#f97316', '#14b8a6', '#eab308',
+        '#ef4444', '#22c55e', '#6366f1', '#a855f7', '#0ea5e9',
+    ];
 
     /* ——————————————————————————————————————————
        State
@@ -1001,6 +1006,7 @@
     let allLanguages = [];
     let is3D = false;
     let isFullscreen = false;
+    let categoryColorMap = {};
 
     /* ——————————————————————————————————————————
        Visualization
@@ -1016,20 +1022,26 @@
                 return;
             }
 
-            allPoints = data.points;
+            allPoints = data.points.map(p => {
+                const category = (p.chapter_name && p.chapter_name.trim())
+                    ? p.chapter_name
+                    : (p.chapter || 'Unknown');
+                return { ...p, category };
+            });
 
             // Extract unique chapters and languages for filters
             const chapSet = new Set();
             const langSet = new Set();
-            data.points.forEach(p => {
-                chapSet.add(p.chapter);
+            allPoints.forEach(p => {
+                chapSet.add(p.category);
                 langSet.add(p.language);
             });
             allChapters = [...chapSet].sort();
             allLanguages = [...langSet].sort();
 
+            categoryColorMap = buildCategoryColorMap(allChapters);
             populateFilters();
-            renderPlot(data.points);
+            renderPlot(allPoints);
         } catch (error) {
             document.getElementById('umap-loading').innerHTML =
                 `<span class="loading-text" style="color:var(--h-red);">Error: ${error.message}</span>`;
@@ -1060,7 +1072,7 @@
         const searchTerm = document.getElementById('point-search').value.toLowerCase().trim();
 
         let filtered = allPoints;
-        if (chapter !== 'all') filtered = filtered.filter(p => p.chapter === chapter);
+        if (chapter !== 'all') filtered = filtered.filter(p => p.category === chapter);
         if (language !== 'all') filtered = filtered.filter(p => p.language === language);
         if (searchTerm) filtered = filtered.filter(p => p.text.toLowerCase().includes(searchTerm));
 
@@ -1071,15 +1083,23 @@
         applyFilters();
     }
 
+    function buildCategoryColorMap(categories) {
+        const map = {};
+        categories.forEach((category, i) => {
+            map[category] = CHAPTER_COLORS[category] || CATEGORY_PALETTE[i % CATEGORY_PALETTE.length];
+        });
+        return map;
+    }
+
     function renderPlot(points) {
         // Group by chapter
         const chapters = {};
         points.forEach(p => {
-            if (!chapters[p.chapter]) chapters[p.chapter] = { x: [], y: [], text: [], customdata: [] };
-            chapters[p.chapter].x.push(p.x);
-            chapters[p.chapter].y.push(p.y);
-            chapters[p.chapter].text.push(p.text);
-            chapters[p.chapter].customdata.push([p.hs_code, p.hs_desc, p.language, p.text]);
+            if (!chapters[p.category]) chapters[p.category] = { x: [], y: [], text: [], customdata: [] };
+            chapters[p.category].x.push(p.x);
+            chapters[p.category].y.push(p.y);
+            chapters[p.category].text.push(p.text);
+            chapters[p.category].customdata.push([p.hs_code, p.hs_desc, p.language, p.text, p.category]);
         });
 
         const traces = Object.entries(chapters).map(([chapter, pts]) => ({
@@ -1090,7 +1110,7 @@
             name: chapter,
             marker: {
                 size: is3D ? 3 : 5,
-                color: CHAPTER_COLORS[chapter] || '#6b7280',
+                color: categoryColorMap[chapter] || '#6b7280',
                 opacity: 0.8,
                 line: { width: 0, color: 'transparent' }
             },
@@ -1099,6 +1119,7 @@
             hovertemplate:
                 '<b style="font-family:monospace">%{customdata[0]}</b><br>' +
                 '%{customdata[1]}<br>' +
+                '<span style="color:#8da2ff">%{customdata[4]}</span><br>' +
                 '<span style="color:#999">%{customdata[3]}</span><br>' +
                 '<i>%{customdata[2]}</i>' +
                 '<extra>%{fullData.name}</extra>',

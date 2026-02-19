@@ -166,7 +166,12 @@ def load_models():
     if cache_path.exists():
         with open(cache_path, encoding="utf-8") as f:
             cached = json.load(f)
-        if isinstance(cached, list) and len(cached) == len(training_data):
+        has_category_fields = (
+            isinstance(cached, list)
+            and len(cached) > 0
+            and "chapter_name" in cached[0]
+        )
+        if isinstance(cached, list) and len(cached) == len(training_data) and has_category_fields:
             umap_data = cached
             print(f"Loaded cached UMAP data: {len(umap_data)} points")
         else:
@@ -195,6 +200,9 @@ def load_models():
             for i, row in training_data.iterrows():
                 hs_code = str(row["hs_code"]).zfill(6)
                 chapter = row["hs_chapter"]
+                chapter_name = str(row.get("hs_chapter_name", "")).strip()
+                if not chapter_name or re.match(r"^HS\s\d{2}$", chapter_name):
+                    chapter_name = str(chapter).split(";")[0].strip()
                 desc = hs_reference.get(hs_code, {}).get("desc", "Unknown")
                 umap_data.append({
                     "x": float(umap_coords[i, 0]),
@@ -202,6 +210,7 @@ def load_models():
                     "text": row["text"][:80],
                     "hs_code": hs_code,
                     "chapter": chapter,
+                    "chapter_name": chapter_name,
                     "hs_desc": desc,
                     "language": row["language"]
                 })
