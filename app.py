@@ -102,30 +102,21 @@ def load_models():
     classifier_path = MODEL_DIR / "knn_classifier.pkl"
     label_encoder_path = MODEL_DIR / "label_encoder.pkl"
     embeddings_path = MODEL_DIR / "embeddings.npy"
+    core_codes = {str(k).zfill(6) for k in hs_reference.keys()}
+    artifacts_exist = classifier_path.exists() and label_encoder_path.exists() and embeddings_path.exists()
 
-    if classifier_path.exists() and label_encoder_path.exists() and embeddings_path.exists():
-        with open(classifier_path, "rb") as f:
-            classifier = pickle.load(f)
-        with open(label_encoder_path, "rb") as f:
-            label_encoder = pickle.load(f)
-        embeddings = np.load(embeddings_path)
-        print("Loaded classifier artifacts from models/")
-    else:
-        print("Classifier artifacts missing; rebuilding from training data...")
+    def compute_full_embeddings():
         texts = training_data["text"].fillna("").astype(str).tolist()
         if not texts:
             raise RuntimeError("No training rows available to rebuild classifier.")
-
-        # Keep query/passages prefixing consistent with inference flow.
-        embeddings = model.encode(
+        return model.encode(
             [f"passage: {text}" for text in texts],
             normalize_embeddings=True,
             convert_to_numpy=True,
         )
 
-        # Keep prediction quality stable by training the classifier on the curated HS set.
-        # We still keep full embeddings/training_data for latent visualization.
-        core_codes = set(hs_reference.keys())
+    def rebuild_classifier_on_curated_codes():
+        global classifier, label_encoder
         classifier_df = training_data[training_data["hs_code"].isin(core_codes)].copy()
         if classifier_df.empty:
             classifier_df = training_data
@@ -147,7 +138,6 @@ def load_models():
             f"across {len(set(hs_labels))} curated HS codes"
         )
 
-        # Best effort cache so next startup can load artifacts directly.
         try:
             np.save(embeddings_path, embeddings)
             with open(classifier_path, "wb") as f:
@@ -157,6 +147,35 @@ def load_models():
             print("Saved rebuilt classifier artifacts to models/")
         except Exception as e:
             print(f"Warning: could not cache rebuilt artifacts: {e}")
+
+    if artifacts_exist:
+        with open(classifier_path, "rb") as f:
+            classifier = pickle.load(f)
+        with open(label_encoder_path, "rb") as f:
+            label_encoder = pickle.load(f)
+        embeddings = np.load(embeddings_path)
+        print("Loaded classifier artifacts from models/")
+
+        if len(embeddings) != len(training_data):
+            print(
+                f"Embeddings size mismatch (embeddings={len(embeddings)}, data={len(training_data)}). "
+                "Recomputing embeddings..."
+            )
+            embeddings = compute_full_embeddings()
+
+        artifact_codes = {str(c).zfill(6) for c in getattr(label_encoder, "classes_", [])}
+        invalid_artifacts = (
+            not artifact_codes
+            or not artifact_codes.issubset(core_codes)
+            or len(artifact_codes) > len(core_codes)
+        )
+        if invalid_artifacts:
+            print("Classifier artifacts not aligned with curated HS set; rebuilding classifier...")
+            rebuild_classifier_on_curated_codes()
+    else:
+        print("Classifier artifacts missing; rebuilding from training data...")
+        embeddings = compute_full_embeddings()
+        rebuild_classifier_on_curated_codes()
     
     # Load HS dataset (official harmonized-system data)
     hs_dataset = get_dataset()
