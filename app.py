@@ -102,8 +102,22 @@ def load_models():
     classifier_path = MODEL_DIR / "knn_classifier.pkl"
     label_encoder_path = MODEL_DIR / "label_encoder.pkl"
     embeddings_path = MODEL_DIR / "embeddings.npy"
+    embeddings_part_paths = sorted(MODEL_DIR.glob("embeddings_part*.npy"))
     core_codes = {str(k).zfill(6) for k in hs_reference.keys()}
-    artifacts_exist = classifier_path.exists() and label_encoder_path.exists() and embeddings_path.exists()
+    artifacts_exist = (
+        classifier_path.exists()
+        and label_encoder_path.exists()
+        and (embeddings_path.exists() or len(embeddings_part_paths) > 0)
+    )
+
+    def load_cached_embeddings():
+        if embeddings_path.exists():
+            return np.load(embeddings_path)
+        part_paths = sorted(MODEL_DIR.glob("embeddings_part*.npy"))
+        if part_paths:
+            parts = [np.load(p) for p in part_paths]
+            return np.concatenate(parts, axis=0)
+        return None
 
     def compute_full_embeddings():
         texts = training_data["text"].fillna("").astype(str).tolist()
@@ -153,12 +167,13 @@ def load_models():
             classifier = pickle.load(f)
         with open(label_encoder_path, "rb") as f:
             label_encoder = pickle.load(f)
-        embeddings = np.load(embeddings_path)
+        embeddings = load_cached_embeddings()
         print("Loaded classifier artifacts from models/")
 
-        if len(embeddings) != len(training_data):
+        if embeddings is None or len(embeddings) != len(training_data):
             print(
-                f"Embeddings size mismatch (embeddings={len(embeddings)}, data={len(training_data)}). "
+                f"Embeddings size mismatch (embeddings={len(embeddings) if embeddings is not None else 0}, "
+                f"data={len(training_data)}). "
                 "Recomputing embeddings..."
             )
             embeddings = compute_full_embeddings()

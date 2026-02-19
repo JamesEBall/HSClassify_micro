@@ -24,8 +24,20 @@ jobs:
             exit 1
           fi
 
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          DEPLOY_DIR="/tmp/hf-deploy"
+          rm -rf "${DEPLOY_DIR}"
+          mkdir -p "${DEPLOY_DIR}"
+
+          # Create a clean export of the current tree and push as a history-free commit.
+          tar --exclude=.git -cf - . | (cd "${DEPLOY_DIR}" && tar -xf -)
+          cd "${DEPLOY_DIR}"
+
+          git init
+          git checkout -b main
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Sync from GitHub ${GITHUB_SHA}"
 
           git remote add hf "https://oauth2:${HF_TOKEN}@huggingface.co/spaces/Troglobyte/MicroHS"
           git push --force hf main

@@ -15,9 +15,9 @@ models/sentence_model/model.safetensors
 models/sentence_model/tokenizer.json
 models/*.npy
 models/*.pkl
-!models/embeddings.npy
 !models/knn_classifier.pkl
 !models/label_encoder.pkl
+!models/embeddings_part*.npy
 
 # IDE
 .vscode/

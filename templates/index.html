@@ -792,7 +792,10 @@
             <span class="header-badge">POC v1.0</span>
         </div>
         <div class="header-stats" aria-label="Model statistics">
-            <span class="stat-pill">{{ metadata.get('n_examples', '?') }} examples</span>
+            <span class="stat-pill">{{ metadata.get('n_examples_full_dataset', metadata.get('n_examples', '?')) }} examples</span>
+            {% if metadata.get('n_examples_full_dataset') %}
+            <span class="stat-pill">{{ metadata.get('n_examples', '?') }} train</span>
+            {% endif %}
             <span class="stat-pill">{{ metadata.get('n_codes', '?') }} codes</span>
             <span class="stat-pill">{{ metadata.get('languages', [])|length }} langs</span>
             <span class="stat-pill" style="color: var(--h-emerald);">{{ (metadata.get('accuracy', 0) * 100)|round(1) }}% acc</span>
