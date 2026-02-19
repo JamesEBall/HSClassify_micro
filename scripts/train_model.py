@@ -31,7 +31,8 @@ MODEL_DIR.mkdir(exist_ok=True)
 
 def load_data():
     """Load training data."""
-    df = pd.read_csv(DATA_DIR / "training_data.csv")
+    df = pd.read_csv(DATA_DIR / "training_data.csv", dtype={"hs_code": str})
+    df["hs_code"] = df["hs_code"].astype(str).str.zfill(6)
     print(f"Loaded {len(df)} examples with {df['hs_code'].nunique()} unique HS codes")
     return df
 
@@ -182,7 +183,7 @@ def main():
     
     # Train classifier
     clf, le, accuracy, report, X_train, X_test, y_train, y_test = train_classifier(
-        embeddings, df["hs_code"].astype(str)
+        embeddings, df["hs_code"].astype(str).str.zfill(6)
     )
     
     # Save everything
@@ -223,8 +224,9 @@ def main():
         
         print(f"\nQuery: {query}")
         for code, prob in zip(top_3_codes, top_3_probs):
-            desc = hs_ref.get(code, {}).get("desc", "Unknown")
-            print(f"  {code} ({prob*100:.1f}%) - {desc}")
+            code6 = str(code).zfill(6)
+            desc = hs_ref.get(code6, {}).get("desc", "Unknown")
+            print(f"  {code6} ({prob*100:.1f}%) - {desc}")
 
 
 if __name__ == "__main__":
