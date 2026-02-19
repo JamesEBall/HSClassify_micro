@@ -775,6 +775,68 @@ def augment_records(records, multiplier=3):
     return expanded
 
 
+def load_official_hs_subheadings():
+    """Load 6-digit official HS subheadings from datasets/harmonized-system."""
+    hs_path = os.path.join(
+        os.path.dirname(__file__),
+        "..",
+        "data",
+        "harmonized-system",
+        "harmonized-system.csv",
+    )
+    rows = []
+    if not os.path.exists(hs_path):
+        return rows
+
+    with open(hs_path, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            if row.get("level") != "6":
+                continue
+            hscode = row.get("hscode", "").strip()
+            desc = row.get("description", "").strip()
+            if len(hscode) != 6 or not hscode.isdigit() or not desc:
+                continue
+            rows.append((hscode, desc))
+    return rows
+
+
+def add_official_hs_examples(data):
+    """Append official HS descriptions as extra English training examples."""
+    variants = max(1, int(os.getenv("OFFICIAL_HS_VARIANTS", "1")))
+
+    base_templates = [
+        "{desc}",
+        "{desc}, customs declaration entry",
+        "imported goods: {desc}",
+        "{desc}, commercial invoice description",
+    ]
+
+    official_rows = load_official_hs_subheadings()
+    if not official_rows:
+        return data
+
+    for hs_code, desc in official_rows:
+        info = HS_CODES.get(hs_code, {"desc": desc, "chapter": f"HS {hs_code[:2]}"})
+        for i in range(variants):
+            template = base_templates[min(i, len(base_templates) - 1)]
+            text = template.format(desc=desc.lower() if i > 0 else desc)
+            data.append({
+                "text": text,
+                "hs_code": hs_code,
+                "hs_chapter": info["chapter"],
+                "hs_desc": info["desc"],
+                "language": "en",
+            })
+
+    # De-duplicate exact same (text, hs_code, language) rows.
+    unique = {}
+    for row in data:
+        key = (row["text"], row["hs_code"], row["language"])
+        unique[key] = row
+    return list(unique.values())
+
+
 def generate_dataset():
     """Generate the complete training dataset."""
     data = []
@@ -835,10 +897,13 @@ def generate_dataset():
                     "hs_desc": info["desc"],
                     "language": "en"
                 })
+
+    # Add official 6-digit HS subheadings from datasets/harmonized-system.
+    data = add_official_hs_examples(data)
     
     # Expand dataset with synthetic trade-context variants.
-    # Default multiplier=3 gives roughly 3x more latent points.
-    multiplier = int(os.getenv("DATA_AUG_MULTIPLIER", "3"))
+    # Keep default moderate for hosted startup time.
+    multiplier = int(os.getenv("DATA_AUG_MULTIPLIER", "2"))
     multiplier = max(1, multiplier)
     data = augment_records(data, multiplier=multiplier)
 

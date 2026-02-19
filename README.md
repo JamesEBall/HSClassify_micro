@@ -26,6 +26,7 @@ Classifies product descriptions into [Harmonized System (HS) codes](https://en.w
 - ⚡ **Real-time classification** — top-3 HS code predictions with confidence scores
 - 📊 **Latent space visualization** — interactive UMAP plot showing embedding clusters
 - 🎯 **KNN-based** — simple, interpretable nearest-neighbor approach using `paraphrase-multilingual-MiniLM-L12-v2`
+- 🧾 **Official HS coverage** — training generation incorporates the [datasets/harmonized-system](https://github.com/datasets/harmonized-system) 6-digit nomenclature
 
 ## Quick Start
 
