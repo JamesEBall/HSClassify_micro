@@ -1,7 +1,10 @@
 # syntax=docker/dockerfile:1
-FROM python:3.9
+FROM python:3.11-slim
 
 WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
 
 # System deps for OCR endpoints:
 # - tesseract for image OCR
@@ -13,10 +16,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Copy requirements.txt and install dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip && pip install -r requirements.txt
 
-# Copy the rest of the application code
-COPY . .
+# Copy only runtime files (keeps build context and cache churn smaller)
+COPY app.py field_extractor.py hs_dataset.py ./
+COPY templates ./templates
+COPY static ./static
+COPY data ./data
+COPY models ./models
+RUN mkdir -p uploads
 
 # Expose the port FastAPI will run on
 EXPOSE 7860

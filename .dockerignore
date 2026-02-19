@@ -5,3 +5,8 @@ __pycache__
 *.pyc
 .DS_Store
 uploads
+scripts
+README.md
+LICENSE
+data/training_data.json
+data/sample_documents
