@@ -1,12 +1,3 @@
----
-title: HS Code Classifier Micro
-emoji: ⚡
-colorFrom: pink
-colorTo: blue
-sdk: docker
-app_port: 7860
----
-
 # HSClassify_micro 🔍
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)

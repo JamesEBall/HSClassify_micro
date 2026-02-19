@@ -36,6 +36,29 @@ jobs:
           # Keep deploy robust by stripping generated model binaries from sync payload.
           find models -type f \( -name '*.npy' -o -name '*.pkl' \) -delete || true
 
+          # Keep GitHub README clean; inject Space front matter only for HF deploy.
+          if [ -f README.md ]; then
+            awk '
+              NR == 1 && $0 == "---" {in_yaml=1; next}
+              in_yaml && $0 == "---" {in_yaml=0; next}
+              !in_yaml {print}
+            ' README.md > README.clean.md
+
+            printf '%s\n' \
+              '---' \
+              'title: HS Code Classifier Micro' \
+              'emoji: ⚡' \
+              'colorFrom: pink' \
+              'colorTo: blue' \
+              'sdk: docker' \
+              'app_port: 7860' \
+              '---' \
+              > README.frontmatter.md
+
+            cat README.frontmatter.md README.clean.md > README.md
+            rm -f README.frontmatter.md README.clean.md
+          fi
+
           git init
           git checkout -b main
           git config user.name "github-actions[bot]"
