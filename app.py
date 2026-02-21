@@ -243,9 +243,12 @@ def load_models():
         print("Computing UMAP projection...")
         try:
             import umap
+            # Higher n_neighbors (30) helps non-English points connect to
+            # their English semantic neighbors instead of forming isolated
+            # language clusters.  min_dist=0.15 gives slightly more spread.
             reducer = umap.UMAP(
-                n_neighbors=15,
-                min_dist=0.1,
+                n_neighbors=30,
+                min_dist=0.15,
                 n_components=2,
                 metric='cosine',
                 random_state=42
