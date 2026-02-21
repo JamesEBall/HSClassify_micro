@@ -1098,26 +1098,446 @@ def make_record(text, hs_code, chapter_name, hs_desc, language):
     }
 
 
-def add_official_hs_examples(data):
-    """Append official HS descriptions as extra English training examples.
+def _realistic_product_text(desc, hs_code, rng):
+    """Generate a realistic product description based on chapter context.
 
-    Ensures every 6-digit code in harmonized-system.csv gets at least 5
-    distinct base examples (before augmentation).
+    Instead of wrapping the raw HS description with 'imported goods:' etc,
+    this produces text that looks like what appears on real commercial
+    invoices, packing lists, and trade declarations — with brand names,
+    model numbers, specs, quantities, and packaging details.
+    """
+    chapter = int(hs_code[:2])
+    dl = desc.lower()
+
+    # ── Chapter-specific generators ──────────────────────────────────
+    # Each returns a list of realistic text variants.  We pick one at
+    # random for each call.
+
+    # Ch 01-05  Live animals / Animal products
+    if chapter <= 5:
+        grades = ["Grade A", "Premium", "Select", "Choice", "HALAL certified",
+                  "USDA inspected", "EU-approved", "organic"]
+        packs = ["vacuum sealed", "in 20kg cartons", "bulk IQF", "10kg master carton",
+                 "shrink-wrapped", "MAP packaged", "blast frozen", "cryovac packed"]
+        opts = [
+            f"{rng.choice(grades)} {dl}, {rng.choice(packs)}",
+            f"{dl}, sourced from certified farms, {rng.choice(packs)}",
+            f"Fresh {dl} for wholesale, {rng.choice(grades).lower()}",
+            f"{dl}, {rng.choice(packs)}, export quality",
+            f"Commercial lot: {dl}, {rng.choice(grades).lower()}, new season",
+        ]
+        return rng.choice(opts)
+
+    # Ch 06-14  Vegetable products
+    if chapter <= 14:
+        origins = ["Thailand", "Vietnam", "Brazil", "Colombia", "India",
+                   "Kenya", "Ethiopia", "Indonesia", "Mexico", "Peru"]
+        packs = ["in 25kg PP bags", "bulk in 1-tonne FIBC", "50kg jute bags",
+                 "5kg retail packs", "cardboard trays", "netted bags"]
+        opts = [
+            f"{dl}, origin {rng.choice(origins)}, {rng.choice(packs)}",
+            f"Organic {dl} from {rng.choice(origins)}, new harvest",
+            f"{dl}, {rng.choice(packs)}, grade I, for supermarket",
+            f"Premium {dl}, single origin {rng.choice(origins)}",
+            f"{dl}, freshly harvested, {rng.choice(packs)}, export grade",
+        ]
+        return rng.choice(opts)
+
+    # Ch 15-24  Prepared foodstuffs / beverages
+    if chapter <= 24:
+        brands = ["Nestlé", "Unilever", "Kraft Heinz", "Mondelez", "Mars",
+                  "PepsiCo", "Coca-Cola", "AB InBev", "Diageo", "JBS"]
+        packs = ["6-pack carton", "24x330ml case", "12x1L box", "500g retail tin",
+                 "bulk 200L drum", "20kg bag", "5L jerrycan", "pallet of 48 cases"]
+        opts = [
+            f"{rng.choice(brands)} brand {dl}, {rng.choice(packs)}",
+            f"{dl}, retail-ready packaging, {rng.choice(packs)}",
+            f"Commercial supply of {dl}, {rng.choice(packs)}",
+            f"{dl}, food-grade, {rng.choice(packs)}, shelf-stable",
+            f"Private-label {dl}, {rng.choice(packs)}, for retail chain",
+        ]
+        return rng.choice(opts)
+
+    # Ch 25-27  Mineral products / fuels
+    if chapter <= 27:
+        specs = ["API gravity 32°", "sulfur content <0.5%", "octane rating 95",
+                 "calorific value 45MJ/kg", "purity 99.5%", "mesh size 200"]
+        volumes = ["50,000 MT bulk shipment", "20ft ISO tank", "200L steel drums",
+                   "tanker vessel cargo", "25kg PP bags, palletized", "1000L IBC"]
+        opts = [
+            f"{dl}, {rng.choice(specs)}, {rng.choice(volumes)}",
+            f"Commodity: {dl}, {rng.choice(volumes)}, industrial grade",
+            f"{dl}, {rng.choice(specs)}, for refinery processing",
+            f"Bulk {dl}, {rng.choice(volumes)}, origin Middle East",
+            f"{dl}, technical grade, {rng.choice(volumes)}",
+        ]
+        return rng.choice(opts)
+
+    # Ch 28-38  Chemicals / pharmaceuticals
+    if chapter <= 38:
+        pharma = ["Pfizer", "Roche", "Novartis", "AstraZeneca", "Merck",
+                  "GSK", "Johnson & Johnson", "Sanofi", "Bayer", "Abbott"]
+        chem = ["BASF", "Dow Chemical", "DuPont", "SABIC", "LyondellBasell",
+                "Mitsubishi Chemical", "Shin-Etsu", "Solvay", "Evonik"]
+        specs = ["purity 99.9%", "pharma grade", "technical grade", "ACS reagent grade",
+                 "USP/NF compliant", "food grade", "industrial grade", "analytical grade"]
+        packs = ["25kg fiber drum", "200L HDPE drum", "1000L IBC", "1kg laboratory bottle",
+                 "bulk tanker", "5L amber glass bottle", "50kg steel drum"]
+        brands = pharma if chapter == 30 or "medic" in dl or "vaccin" in dl else chem
+        opts = [
+            f"{rng.choice(brands)} {dl}, {rng.choice(specs)}, {rng.choice(packs)}",
+            f"{dl}, {rng.choice(specs)}, CAS registered, {rng.choice(packs)}",
+            f"Supply of {dl}, {rng.choice(specs)}, {rng.choice(packs)}",
+            f"{dl}, {rng.choice(packs)}, SDS included, {rng.choice(specs)}",
+            f"Lot: {dl}, batch-tested, {rng.choice(specs)}",
+        ]
+        return rng.choice(opts)
+
+    # Ch 39-40  Plastics / rubber
+    if chapter <= 40:
+        types = ["injection moulding grade", "extrusion grade", "blow moulding grade",
+                 "film grade", "pipe grade", "FDA-approved food contact grade"]
+        brands = ["SABIC", "LyondellBasell", "ExxonMobil Chemical", "Dow", "INEOS",
+                  "Formosa Plastics", "Sinopec", "LG Chem", "Braskem"]
+        packs = ["25kg PE bags on pallet", "1000kg super sack", "octabin", "500kg gaylord box"]
+        opts = [
+            f"{rng.choice(brands)} {dl}, {rng.choice(types)}, {rng.choice(packs)}",
+            f"{dl}, MFI 2.0, density 0.95, {rng.choice(packs)}",
+            f"{dl}, {rng.choice(types)}, virgin resin, {rng.choice(packs)}",
+            f"Recycled {dl}, post-consumer, {rng.choice(packs)}",
+            f"{dl}, {rng.choice(types)}, natural colour, {rng.choice(packs)}",
+        ]
+        return rng.choice(opts)
+
+    # Ch 41-43  Leather / furskins
+    if chapter <= 43:
+        types = ["full-grain", "top-grain", "split leather", "patent leather",
+                 "suede", "nubuck", "chrome-tanned", "vegetable-tanned"]
+        opts = [
+            f"{rng.choice(types).title()} {dl}, Italian origin, for luxury goods",
+            f"{dl}, {rng.choice(types)}, dyed black, for shoe manufacturing",
+            f"{dl}, {rng.choice(types)}, thickness 1.2mm, in bundles",
+            f"Premium {dl}, {rng.choice(types)}, for handbag production",
+            f"{dl}, {rng.choice(types)}, bovine origin, 50 sq ft hides",
+        ]
+        return rng.choice(opts)
+
+    # Ch 44-49  Wood / paper
+    if chapter <= 49:
+        species = ["pine", "oak", "birch", "eucalyptus", "teak", "spruce", "maple"]
+        paper_brands = ["UPM", "Stora Enso", "International Paper", "Sappi", "APP"]
+        if chapter <= 46:
+            opts = [
+                f"{dl}, {rng.choice(species)}, kiln-dried, FSC certified",
+                f"{rng.choice(species).title()} {dl}, moisture content <12%",
+                f"{dl}, sustainably sourced {rng.choice(species)}, bundled",
+                f"Commercial lot: {dl}, {rng.choice(species)}, planed",
+                f"{dl}, {rng.choice(species)} wood, for furniture manufacturing",
+            ]
+        else:
+            opts = [
+                f"{rng.choice(paper_brands)} {dl}, 80gsm, A4, 500 sheets/ream",
+                f"{dl}, coated, 120gsm, for offset printing",
+                f"{dl}, uncoated, recycled content 30%, pallet-wrapped",
+                f"Bulk order: {dl}, 70gsm, in reams, for commercial printing",
+                f"{dl}, bleached, 90gsm, FSC certified, shrink-wrapped",
+            ]
+        return rng.choice(opts)
+
+    # Ch 50-63  Textiles / apparel
+    if chapter <= 63:
+        fabrics = ["100% cotton", "65/35 polyester-cotton", "100% polyester",
+                   "organic cotton", "linen blend", "silk", "merino wool"]
+        brands = ["Nike", "Adidas", "Zara", "H&M", "Uniqlo", "Levi's",
+                  "Ralph Lauren", "Calvin Klein", "Tommy Hilfiger", "GAP"]
+        sizes = ["S/M/L/XL assorted", "one size", "EU 38-44 range", "US 6-12"]
+        if chapter >= 61:  # apparel
+            opts = [
+                f"{rng.choice(brands)} {dl}, {rng.choice(fabrics)}, {rng.choice(sizes)}",
+                f"{dl}, {rng.choice(fabrics)}, men's, {rng.choice(sizes)}, new",
+                f"Lot of 500 pcs: {dl}, {rng.choice(fabrics)}, assorted colours",
+                f"{dl}, women's, {rng.choice(brands)} brand, retail-packaged",
+                f"Children's {dl}, {rng.choice(fabrics)}, printed, dozen-packed",
+            ]
+        else:
+            opts = [
+                f"{dl}, {rng.choice(fabrics)}, width 150cm, roll of 100m",
+                f"{rng.choice(fabrics)} {dl}, dyed, for garment factory",
+                f"{dl}, {rng.choice(fabrics)}, 200 thread count, bleached",
+                f"Industrial supply: {dl}, {rng.choice(fabrics)}, greige fabric",
+                f"{dl}, {rng.choice(fabrics)}, knitted, tubular, 30kg rolls",
+            ]
+        return rng.choice(opts)
+
+    # Ch 64-67  Footwear / headgear
+    if chapter <= 67:
+        brands = ["Nike Air Max 270", "Adidas Ultraboost 24", "New Balance 990v6",
+                  "Puma RS-X", "Asics Gel-Kayano 31", "Reebok Classic",
+                  "Dr. Martens 1460", "Timberland 6-Inch Boot", "Converse Chuck Taylor"]
+        opts = [
+            f"{rng.choice(brands)}, {dl}, sizes EU 36-46, new in box",
+            f"{dl}, leather upper, rubber sole, 12 pairs/carton",
+            f"Athletic {dl}, mesh upper, EVA midsole, {rng.choice(brands).split()[0]} brand",
+            f"{dl}, men's, size run 7-13 US, 60 pairs per case",
+            f"Women's {dl}, {rng.choice(brands).split()[0]}, retail-boxed",
+        ]
+        return rng.choice(opts)
+
+    # Ch 68-71  Stone / ceramic / glass / precious metals
+    if chapter <= 71:
+        if chapter == 71:
+            brands = ["Tiffany & Co.", "Cartier", "Pandora", "Swarovski", "De Beers"]
+            opts = [
+                f"{rng.choice(brands)} {dl}, 18K gold, hallmarked",
+                f"{dl}, 925 sterling silver, polished, retail-boxed",
+                f"GIA-certified {dl}, 1.5 carat, VS1 clarity, D colour",
+                f"Lot of {dl}, 14K white gold, assorted designs",
+                f"{dl}, platinum setting, conflict-free diamonds",
+            ]
+        else:
+            opts = [
+                f"{dl}, tempered, 6mm thick, 2440x1220mm sheets",
+                f"Container of {dl}, for construction, palletized",
+                f"{dl}, grade A, polished finish, for interior use",
+                f"Ceramic {dl}, glazed, 600x600mm, 20 sqm/pallet",
+                f"{dl}, borosilicate, laboratory grade, in crates",
+            ]
+        return rng.choice(opts)
+
+    # Ch 72-83  Base metals
+    if chapter <= 83:
+        mills = ["ArcelorMittal", "Nippon Steel", "POSCO", "Baosteel", "Tata Steel",
+                 "Nucor", "ThyssenKrupp", "JFE Steel", "SSAB", "Hyundai Steel"]
+        specs = ["hot-rolled", "cold-rolled", "galvanized", "stainless 304",
+                 "stainless 316L", "electrolytic", "annealed", "pickled"]
+        dims = ["thickness 2.0mm, width 1250mm", "coil weight 20MT", "6m lengths",
+                "diameter 12mm, in bundles", "gauge 18, 4x8 ft sheets"]
+        opts = [
+            f"{rng.choice(mills)} {dl}, {rng.choice(specs)}, {rng.choice(dims)}",
+            f"{dl}, {rng.choice(specs)}, ASTM A36, {rng.choice(dims)}",
+            f"Steel {dl}, {rng.choice(specs)}, EN 10025 certified",
+            f"{dl}, {rng.choice(specs)}, mill-direct, {rng.choice(dims)}",
+            f"Commercial quality {dl}, {rng.choice(specs)}, test certificate included",
+        ]
+        return rng.choice(opts)
+
+    # Ch 84-85  Machinery / Electrical equipment
+    # Use keyword matching to pick contextually-appropriate brands
+    if chapter <= 85:
+        # Keyword → brand mapping for realistic product descriptions
+        # NOTE: Order matters — more specific patterns MUST come first.
+        # "headphone" contains "phone" so must be checked before "phone".
+        _brand_map_85 = {
+            "headphone|earphone|speaker|loudspeaker|sound": [
+                "Bose QuietComfort Ultra Headphones", "Sony WH-1000XM6",
+                "Apple AirPods Pro 3", "Samsung Galaxy Buds4 Pro",
+                "Sennheiser Momentum 5", "JBL Charge 6 Bluetooth Speaker",
+                "Sonos Era 300", "Bang & Olufsen Beoplay H100"],
+            "microphone": [
+                "Shure SM7dB", "Rode NT1 5th Gen", "Audio-Technica AT2020",
+                "Blue Yeti X", "Sennheiser MKE 600", "Neumann U87 Ai"],
+            "phone|smartphone|cellular|telephone": [
+                "Apple iPhone 17 Pro Max 512GB", "Samsung Galaxy S26 Ultra 256GB",
+                "Google Pixel 10 Pro 256GB", "OnePlus 13 Pro",
+                "Xiaomi 15 Ultra", "Huawei Pura 80 Pro", "Sony Xperia 1 VII",
+                "Nothing Phone (3)", "Motorola Edge 60 Ultra", "OPPO Find X8 Pro"],
+            "television|monitor|display": [
+                "Sony Bravia XR-77A95L 77\" 4K OLED", "LG OLED65C4 65\" TV",
+                "Samsung QN90D 75\" Neo QLED", "TCL 98C955 98\" Mini LED",
+                "Hisense U8N 65\" 4K", "Dell UltraSharp U2724D 27\" monitor",
+                "ASUS ProArt PA32UCG-K 32\" HDR", "BenQ PD3225U 32\""],
+            "camera|photograph|video record": [
+                "Canon EOS R5 Mark II", "Sony A7R VI Mirrorless",
+                "Nikon Z8 Full-Frame", "Fujifilm X-T6", "GoPro Hero 13 Black",
+                "DJI Osmo Action 5 Pro", "Panasonic Lumix S5 IIX"],
+            "computer|laptop|notebook|data processing|portable.*<10kg": [
+                "Apple MacBook Pro M4 Max 16\"", "Dell XPS 16 9640",
+                "Lenovo ThinkPad X1 Carbon Gen 13", "HP EliteBook 860 G11",
+                "ASUS ROG Zephyrus G16", "Microsoft Surface Laptop 7",
+                "Framework Laptop 16", "Razer Blade 16 2025"],
+            "server|data processing.*unit|storage unit": [
+                "Dell PowerEdge R760", "HP ProLiant DL380 Gen12",
+                "Lenovo ThinkSystem SR650 V3", "Supermicro SYS-621C-TN12R",
+                "Samsung 990 PRO 4TB NVMe SSD", "WD Ultrastar DC HC580 22TB"],
+            "semiconductor|processor|chip|integrated circuit": [
+                "Intel Core Ultra 9 285K processor", "AMD Ryzen 9 9950X CPU",
+                "NVIDIA GeForce RTX 5090 24GB GPU", "AMD Radeon RX 9070 XT",
+                "Qualcomm Snapdragon 8 Elite", "Apple M4 Ultra chip",
+                "Samsung Exynos 2500", "MediaTek Dimensity 9400"],
+            "battery|accumulator|cell": [
+                "CATL LFP battery cell 280Ah", "Samsung SDI NMC pouch cell",
+                "BYD Blade Battery module 150Ah", "LG Energy Solution cylindrical cell",
+                "Panasonic 4680 lithium-ion cell", "EVE Energy prismatic cell 314Ah"],
+            "lamp|lighting|LED": [
+                "Philips Hue White & Color A21", "OSRAM Smart+ LED Strip",
+                "Cree XHP70.3 HI LED module", "Signify Interact LED panel",
+                "GE Current LED troffer", "Flos IC Ceiling Light"],
+            "motor|engine|pump|compressor|turbine": [
+                "Siemens SIMOTICS GP motor 75kW", "ABB ACS880 variable speed drive",
+                "WEG W22 electric motor 55kW", "Nidec brushless DC motor",
+                "Grundfos CRE centrifugal pump", "Atlas Copco GA37+ compressor"],
+            "washing|dishwash|dryer|refrigerat|freezer|air condition": [
+                "Samsung Bespoke AI Washer WF53BB8700AT",
+                "LG WashTower WKG101HWA",
+                "Dyson V15 Detect cordless vacuum",
+                "Bosch Series 8 dishwasher SMS8YCI03E",
+                "Daikin split-type AC FTXZ50N 18000BTU",
+                "Carrier 42QHB018D8S ducted unit"],
+        }
+        _brand_map_84 = {
+            "tractor|agricultural|harvester|plough": [
+                "John Deere 8R 410", "Caterpillar D6 dozer",
+                "Kubota M7-172 tractor", "CLAAS Lexion 8900 combine",
+                "New Holland T7.315 HD", "Massey Ferguson 8S.305"],
+            "excavat|bulldozer|crane|loader|earth.?mov": [
+                "Caterpillar 320 excavator", "Komatsu PC210LC-11",
+                "Volvo EC220E excavator", "Liebherr LTM 1300-6.3 crane",
+                "Hitachi ZX350LC-7 excavator", "JCB 3CX backhoe loader"],
+            "lathe|milling|drilling|CNC|machining|turning": [
+                "Haas VF-2SS CNC vertical mill", "DMG Mori NLX 2500/700",
+                "Fanuc Robodrill α-D21MiB5", "Mazak QT-250MSY CNC lathe",
+                "Okuma GENOS M560-V", "Trumpf TruLaser 3060"],
+            "centrifug|filter|distill|reactor|heat exchang": [
+                "Alfa Laval ALDEC G3 decanter", "GEA Westfalia separator",
+                "Andritz Gouda drum dryer", "Pall Corporation filter housing"],
+            "print|copy": [
+                "HP DesignJet Z9+ 44\" printer", "Epson SureColor SC-P5370",
+                "Canon imagePRESS V1350", "Xerox Versant 4100"],
+            "robot|automat": [
+                "Fanuc CRX-25iA cobot", "ABB IRB 6700 industrial robot",
+                "KUKA KR QUANTEC", "Universal Robots UR20"],
+        }
+        import re as _re
+        brand_map = _brand_map_84 if chapter == 84 else _brand_map_85
+        # Find matching brands by keyword
+        matched = []
+        for pattern, blist in brand_map.items():
+            if _re.search(pattern, dl, _re.IGNORECASE):
+                matched = blist
+                break
+        if not matched:
+            # Generic fallback for the chapter
+            if chapter == 84:
+                matched = ["Siemens", "Bosch", "ABB", "Mitsubishi", "Fanuc",
+                           "Caterpillar", "Komatsu", "Haas", "DMG Mori"]
+            else:
+                matched = ["Samsung", "LG", "Sony", "Panasonic", "Philips",
+                           "Bosch", "Siemens", "Schneider Electric", "ABB"]
+        brand = rng.choice(matched)
+        opts = [
+            f"{brand}, {dl}, new in original packaging",
+            f"{dl}, {brand.split()[0]} brand, with warranty card",
+            f"1x {brand}, factory sealed, {dl}",
+            f"Lot of 100 units: {dl}, {brand.split(',')[0]}",
+            f"{brand} — {dl}, for commercial distribution",
+        ]
+        return rng.choice(opts)
+
+    # Ch 86-89  Vehicles / aircraft / vessels
+    if chapter <= 89:
+        if chapter == 87:
+            brands = ["Toyota Camry 2026", "Honda CR-V 2025", "Tesla Model Y LR",
+                      "BMW X5 xDrive40i", "Mercedes-Benz GLC 300", "Hyundai Tucson HEV",
+                      "Ford F-150 Lightning", "Volkswagen ID.4 Pro S",
+                      "BYD Seal 82kWh", "Kia EV6 GT-Line"]
+        elif chapter == 88:
+            brands = ["Boeing 787-9 Dreamliner", "Airbus A350-900", "Embraer E195-E2",
+                      "DJI Matrice 350 RTK drone", "Cessna Citation CJ4 Gen2"]
+        else:
+            brands = ["Maersk container vessel", "bulk carrier 82,000 DWT",
+                      "Yamaha outboard motor 300HP", "Boston Whaler 280 Outrage"]
+        opts = [
+            f"{rng.choice(brands)}, {dl}, new, unregistered",
+            f"{dl}, {rng.choice(brands)}, for import and sale",
+            f"1 unit: {rng.choice(brands)}, {dl}",
+            f"{dl}, brand new {rng.choice(brands)}, with documentation",
+            f"Used {rng.choice(brands)}, {dl}, mileage 45,000 km",
+        ]
+        return rng.choice(opts)
+
+    # Ch 90-92  Instruments / clocks / musical instruments
+    if chapter <= 92:
+        if chapter == 90:
+            brands = ["Zeiss", "Olympus", "Nikon", "Leica", "Shimadzu",
+                      "Agilent", "Thermo Fisher", "Roche Diagnostics",
+                      "Medtronic", "Siemens Healthineers", "GE HealthCare"]
+        elif chapter == 91:
+            brands = ["Rolex Submariner", "Omega Seamaster", "Seiko Prospex",
+                      "Casio G-Shock", "TAG Heuer Carrera", "Citizen Eco-Drive"]
+        else:
+            brands = ["Yamaha C7X Grand Piano", "Fender Stratocaster American Pro II",
+                      "Gibson Les Paul Standard '60s", "Roland TD-50X V-Drums",
+                      "Martin D-28 Acoustic Guitar", "Steinway Model B"]
+        opts = [
+            f"{rng.choice(brands)}, {dl}, new, factory warranty",
+            f"{dl}, {rng.choice(brands)}, professionally calibrated",
+            f"1x {rng.choice(brands)}, {dl}, in protective case",
+            f"{dl}, manufactured by {rng.choice(brands).split()[0]}, current model year",
+            f"Commercial order: {dl}, {rng.choice(brands)}, 10 units",
+        ]
+        return rng.choice(opts)
+
+    # Ch 93  Arms and ammunition
+    if chapter == 93:
+        opts = [
+            f"{dl}, for military contract, with end-user certificate",
+            f"Sporting {dl}, for licensed dealer, serial numbered",
+            f"{dl}, deactivated, for museum exhibition",
+            f"Competition-grade {dl}, .22LR caliber, cased",
+            f"{dl}, law enforcement procurement, with documentation",
+        ]
+        return rng.choice(opts)
+
+    # Ch 94-96  Furniture / toys / misc manufactured articles
+    if chapter <= 96:
+        if chapter == 94:
+            brands = ["IKEA KALLAX", "Herman Miller Aeron", "Steelcase Leap V2",
+                      "Ashley Furniture", "La-Z-Boy", "West Elm", "CB2",
+                      "Philips Hue", "OSRAM Smart+", "Flos IC Lights"]
+        elif chapter == 95:
+            brands = ["LEGO Star Wars UCS set 75375", "Nintendo Switch 2",
+                      "PlayStation 6 Digital Edition", "Xbox Series X 2TB",
+                      "Hasbro Monopoly", "Mattel Barbie", "Bandai Gundam",
+                      "Callaway Paradym Ai Smoke Driver", "TaylorMade Qi35 Irons"]
+        else:
+            brands = ["Parker Duofold", "Montblanc Meisterstück 149",
+                      "BIC Cristal", "Pilot G2", "Staedtler Mars"]
+        opts = [
+            f"{rng.choice(brands)}, {dl}, new, retail packaged",
+            f"{dl}, {rng.choice(brands)}, in original box, for retail sale",
+            f"Carton of 24: {dl}, {rng.choice(brands).split()[0]} brand",
+            f"{dl}, designed by {rng.choice(brands).split()[0]}, current collection",
+            f"Wholesale lot: {dl}, {rng.choice(brands)}, assorted",
+        ]
+        return rng.choice(opts)
+
+    # Ch 97  Works of art, antiques
+    if chapter == 97:
+        opts = [
+            f"{dl}, original work, with certificate of authenticity",
+            f"Contemporary {dl}, by emerging artist, gallery-wrapped",
+            f"Antique {dl}, circa 1890, professionally appraised at $12,000",
+            f"{dl}, limited edition print, numbered 45/200, framed",
+            f"{dl}, for private collection, insured value $25,000",
+        ]
+        return rng.choice(opts)
+
+    # Fallback for any chapter not explicitly covered
+    contexts = ["new, commercial grade", "for wholesale distribution",
+                "factory sealed, with documentation", "bulk order, 500 units",
+                "retail-ready, individually packaged"]
+    return f"{dl}, {rng.choice(contexts)}"
+
+
+def add_official_hs_examples(data):
+    """Append realistic product descriptions for every 6-digit HS code.
+
+    Uses chapter-aware generators to produce text that resembles real
+    commercial invoices, packing lists, and customs declarations — with
+    brand names, model numbers, specs, and packaging details.
     """
     variants = max(5, int(os.getenv("OFFICIAL_HS_VARIANTS", "5")))
-
-    base_templates = [
-        "{desc}",
-        "{desc}, customs declaration entry",
-        "imported goods: {desc}",
-        "{desc}, commercial invoice description",
-        "shipment of {desc_lower} for export",
-        "{desc_lower}, trade classification reference",
-        "commodity: {desc_lower}",
-        "{desc}, tariff line item",
-        "wholesale supply of {desc_lower}",
-        "import manifest: {desc_lower}",
-    ]
+    rng = random.Random(42)  # deterministic for reproducibility
 
     official_rows = load_official_hs_subheadings()
     if not official_rows:
@@ -1132,9 +1552,8 @@ def add_official_hs_examples(data):
         info = HS_CODES.get(hs_code, {"desc": desc, "chapter": f"HS {hs_code[:2]}"})
         existing = code_counts.get(hs_code, 0)
         needed = max(0, variants - existing)
-        for i in range(needed):
-            template = base_templates[i % len(base_templates)]
-            text = template.format(desc=desc, desc_lower=desc.lower())
+        for _ in range(needed):
+            text = _realistic_product_text(desc, hs_code, rng)
             data.append(make_record(text, hs_code, info["chapter"], info["desc"], "en"))
 
     # De-duplicate exact same (text, hs_code, language) rows.
