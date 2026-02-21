@@ -1692,22 +1692,19 @@
                 '<extra>%{fullData.name}</extra>',
         }));
 
-        // Cluster labels — show chapter names at the medoid (densest point)
-        // Uses the point closest to the geometric median for better placement
+        // Cluster labels — positioned at top-center of the cluster bounding box
+        // so they float above the points rather than overlapping them
         const annotations = chapterEntries
             .filter(([_, pts]) => pts.x.length >= 15)  // Only label sizable clusters
             .map(([chapter, pts]) => {
-                // Find medoid: the actual data point closest to the mean
-                const mx = pts.x.reduce((a, b) => a + b, 0) / pts.x.length;
-                const my = pts.y.reduce((a, b) => a + b, 0) / pts.y.length;
-                let bestIdx = 0, bestDist = Infinity;
-                for (let i = 0; i < pts.x.length; i++) {
-                    const d = (pts.x[i] - mx) ** 2 + (pts.y[i] - my) ** 2;
-                    if (d < bestDist) { bestDist = d; bestIdx = i; }
-                }
+                // Place at the horizontal center, vertical top of the cluster
+                const xMin = Math.min(...pts.x);
+                const xMax = Math.max(...pts.x);
+                const yMax = Math.max(...pts.y);
+                const cx = (xMin + xMax) / 2;
                 return {
-                    x: pts.x[bestIdx],
-                    y: pts.y[bestIdx],
+                    x: cx,
+                    y: yMax,
                     text: chapter,
                     showarrow: false,
                     font: {
@@ -1715,10 +1712,10 @@
                         color: categoryColorMap[chapter] || 'rgba(255,255,255,0.35)',
                         family: "'Inter', sans-serif",
                     },
-                    opacity: 0.5,
+                    opacity: 0.45,
                     xanchor: 'center',
                     yanchor: 'bottom',
-                    yshift: 6,
+                    yshift: 10,
                 };
             });
 
