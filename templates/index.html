@@ -856,9 +856,444 @@
         /* Utility */
         .hidden { display: none !important; }
         .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0; }
+
+        /* ============================================
+           Welcome Modal / First-use Explainer
+           ============================================ */
+        .welcome-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 1000;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(6px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.25s ease;
+        }
+
+        .welcome-modal {
+            background: #111111;
+            border: 1px solid var(--h-border-mid);
+            border-radius: var(--h-radius-xl);
+            width: min(520px, calc(100vw - 2rem));
+            max-height: calc(100vh - 4rem);
+            overflow: hidden;
+            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.04);
+            animation: slideUp 0.3s ease;
+        }
+
+        .welcome-header {
+            padding: 1.75rem 1.75rem 0;
+            text-align: center;
+        }
+
+        .welcome-header .welcome-icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.75rem;
+            display: block;
+        }
+
+        .welcome-header h2 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--h-text);
+            margin-bottom: 0.25rem;
+        }
+
+        .welcome-header p {
+            font-size: 0.8125rem;
+            color: var(--h-text-3);
+            line-height: 1.5;
+        }
+
+        .welcome-steps {
+            padding: 1.25rem 1.75rem;
+            overflow-y: auto;
+        }
+
+        .welcome-step {
+            display: none;
+        }
+
+        .welcome-step.active {
+            display: block;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .step-card {
+            background: var(--h-bg-surface);
+            border: 1px solid var(--h-border);
+            border-radius: var(--h-radius-lg);
+            padding: 1rem 1.25rem;
+            margin-bottom: 0.625rem;
+        }
+
+        .step-card .step-number {
+            font-size: 0.625rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--h-accent);
+            margin-bottom: 0.375rem;
+        }
+
+        .step-card h3 {
+            font-size: 0.9375rem;
+            font-weight: 600;
+            color: var(--h-text);
+            margin-bottom: 0.375rem;
+        }
+
+        .step-card p {
+            font-size: 0.8125rem;
+            color: var(--h-text-3);
+            line-height: 1.55;
+        }
+
+        .step-card .step-keys {
+            display: inline-flex;
+            gap: 0.25rem;
+            margin-top: 0.5rem;
+        }
+
+        .step-card .step-keys kbd {
+            font-family: var(--h-mono);
+            font-size: 0.625rem;
+            padding: 0.15rem 0.4rem;
+            background: var(--h-bg-active);
+            border: 1px solid var(--h-border-mid);
+            border-radius: 4px;
+            color: var(--h-text-3);
+        }
+
+        .welcome-footer {
+            padding: 0 1.75rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+        }
+
+        .step-dots {
+            display: flex;
+            gap: 0.375rem;
+        }
+
+        .step-dots .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--h-border-mid);
+            transition: all 0.2s ease;
+        }
+
+        .step-dots .dot.active {
+            background: var(--h-accent);
+            box-shadow: 0 0 6px var(--h-accent-glow);
+        }
+
+        .welcome-footer .btn-row {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        @media (max-width: 640px) {
+            .welcome-modal { width: calc(100vw - 1.5rem); }
+            .welcome-header { padding: 1.25rem 1.25rem 0; }
+            .welcome-steps { padding: 1rem 1.25rem; }
+            .welcome-footer { padding: 0 1.25rem 1.25rem; }
+        }
+
+        /* ============================================
+           Document Upload Zone
+           ============================================ */
+        .upload-zone {
+            position: relative;
+            border: 1.5px dashed var(--h-border-mid);
+            border-radius: var(--h-radius-lg);
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: transparent;
+            margin-top: 0.75rem;
+        }
+
+        .upload-zone:hover {
+            border-color: var(--h-accent);
+            background: var(--h-accent-soft);
+        }
+
+        .upload-zone.dragover {
+            border-color: var(--h-accent);
+            background: var(--h-accent-soft);
+            box-shadow: 0 0 20px -6px var(--h-accent-glow);
+        }
+
+        .upload-zone .upload-icon {
+            font-size: 1.25rem;
+            opacity: 0.4;
+            margin-bottom: 0.25rem;
+        }
+
+        .upload-zone p {
+            font-size: 0.75rem;
+            color: var(--h-text-4);
+            line-height: 1.4;
+        }
+
+        .upload-zone p strong {
+            color: var(--h-text-3);
+        }
+
+        .upload-zone input[type="file"] {
+            position: absolute;
+            inset: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .upload-result {
+            margin-top: 0.75rem;
+            padding: 0.875rem;
+            background: var(--h-bg-surface);
+            border: 1px solid var(--h-border);
+            border-radius: var(--h-radius);
+            animation: slideUp 0.25s ease;
+        }
+
+        .upload-result .upload-result-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+
+        .upload-result .upload-result-header span {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--h-emerald);
+        }
+
+        .upload-result .upload-result-header button {
+            background: none;
+            border: none;
+            color: var(--h-text-4);
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+
+        .upload-result .extracted-text {
+            font-size: 0.75rem;
+            color: var(--h-text-3);
+            line-height: 1.4;
+            max-height: 80px;
+            overflow-y: auto;
+            margin-bottom: 0.5rem;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .upload-result .extracted-fields {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+        }
+
+        .upload-result .field-tag {
+            font-size: 0.625rem;
+            padding: 0.15rem 0.4rem;
+            background: var(--h-accent-soft);
+            color: var(--h-accent);
+            border-radius: 4px;
+            font-family: var(--h-mono);
+        }
+
+        /* ============================================
+           Feedback Buttons
+           ============================================ */
+        .feedback-row {
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+            margin-top: 0.5rem;
+        }
+
+        .feedback-row .fb-label {
+            font-size: 0.625rem;
+            color: var(--h-text-4);
+        }
+
+        .feedback-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.5rem;
+            height: 1.5rem;
+            border-radius: var(--h-radius);
+            border: 1px solid var(--h-border);
+            background: transparent;
+            cursor: pointer;
+            font-size: 0.6875rem;
+            transition: all 0.15s ease;
+            color: var(--h-text-4);
+        }
+
+        .feedback-btn:hover {
+            border-color: var(--h-border-mid);
+            background: var(--h-bg-hover);
+            color: var(--h-text-2);
+        }
+
+        .feedback-btn.selected-up {
+            border-color: var(--h-emerald);
+            background: var(--h-emerald-soft);
+            color: var(--h-emerald);
+        }
+
+        .feedback-btn.selected-down {
+            border-color: var(--h-red);
+            background: var(--h-red-soft);
+            color: var(--h-red);
+        }
+
+        .feedback-toast {
+            position: fixed;
+            bottom: 1.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(10,10,10,0.95);
+            border: 1px solid var(--h-border-mid);
+            border-radius: var(--h-radius-full);
+            padding: 0.5rem 1rem;
+            font-size: 0.75rem;
+            color: var(--h-text-2);
+            z-index: 200;
+            animation: slideUp 0.2s ease;
+            pointer-events: none;
+        }
+
+        /* ============================================
+           Mode Tabs (Text / Upload)
+           ============================================ */
+        .input-tabs {
+            display: flex;
+            gap: 0;
+            margin-bottom: 0.75rem;
+            border: 1px solid var(--h-border);
+            border-radius: var(--h-radius);
+            overflow: hidden;
+        }
+
+        .input-tab {
+            flex: 1;
+            padding: 0.4rem 0.75rem;
+            font-family: var(--h-font);
+            font-size: 0.6875rem;
+            font-weight: 500;
+            color: var(--h-text-4);
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            text-align: center;
+        }
+
+        .input-tab:not(:last-child) {
+            border-right: 1px solid var(--h-border);
+        }
+
+        .input-tab.active {
+            background: var(--h-bg-surface);
+            color: var(--h-text);
+        }
+
+        .input-tab:hover:not(.active) {
+            color: var(--h-text-3);
+            background: var(--h-bg-raised);
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
     </style>
 </head>
 <body>
+    <!-- ============================================
+         Welcome / First-use Explainer
+         ============================================ -->
+    <div class="welcome-overlay hidden" id="welcome-overlay" role="dialog" aria-modal="true" aria-label="Welcome guide">
+        <div class="welcome-modal">
+            <div class="welcome-header">
+                <span class="welcome-icon">&#x2693;</span>
+                <h2>Welcome to HS Code Classifier</h2>
+                <p>Classify product descriptions into standardized Harmonized System (HS) codes used in international trade and customs.</p>
+            </div>
+
+            <div class="welcome-steps">
+                <!-- Step 1: How it works -->
+                <div class="welcome-step active" data-step="0">
+                    <div class="step-card">
+                        <div class="step-number">Step 1 of 4 &mdash; How it works</div>
+                        <h3>The ML pipeline</h3>
+                        <p>Your product description is converted into a 384-dimensional vector using a <strong style="color:var(--h-text);">multilingual embedding model</strong> (multilingual-e5-small). A <strong style="color:var(--h-text);">K-Nearest Neighbors</strong> classifier then finds the closest training examples in that embedding space and votes on the most likely HS code. The confidence score reflects how strongly the neighbors agree.</p>
+                    </div>
+                    <div class="step-card" style="margin-top:0.5rem;">
+                        <div class="step-number">Visualization</div>
+                        <p>The scatter plot uses <strong style="color:var(--h-text);">UMAP</strong> (Uniform Manifold Approximation and Projection) to project the high-dimensional embeddings down to 2D, so you can see how product categories cluster together. Points that are close in the plot are semantically similar.</p>
+                    </div>
+                </div>
+
+                <!-- Step 2: Input -->
+                <div class="welcome-step" data-step="1">
+                    <div class="step-card">
+                        <div class="step-number">Step 2 of 4 &mdash; Classify</div>
+                        <h3>Describe a product</h3>
+                        <p>Type or paste any product description in the text box on the left. The model supports multiple languages including English, Thai, Vietnamese, and Chinese. You'll get up to 5 predictions ranked by confidence, plus the nearest training examples used to make the decision.</p>
+                        <div class="step-keys"><kbd>&#8984;/Ctrl</kbd><kbd>Enter</kbd> <span style="font-size:0.6875rem;color:var(--h-text-4);margin-left:0.25rem;">to classify</span></div>
+                    </div>
+                </div>
+
+                <!-- Step 3: Examples -->
+                <div class="welcome-step" data-step="2">
+                    <div class="step-card">
+                        <div class="step-number">Step 3 of 4 &mdash; Examples</div>
+                        <h3>Try the example chips</h3>
+                        <p>Click any of the example chips below the input to instantly classify pre-built product descriptions across four languages. This is the quickest way to see the model in action and understand what the results look like.</p>
+                    </div>
+                </div>
+
+                <!-- Step 4: Visualization -->
+                <div class="welcome-step" data-step="3">
+                    <div class="step-card">
+                        <div class="step-number">Step 4 of 4 &mdash; Explore</div>
+                        <h3>Explore the latent space</h3>
+                        <p>The UMAP visualization on the right shows all {{ metadata.get('n_examples_full_dataset', metadata.get('n_examples', '')) }} training examples projected into 2D. When you classify a product, your query appears as a diamond and the nearest neighbors light up. Filter by chapter or language, and click any point for details.</p>
+                        <div class="step-keys"><kbd>&#8984;/Ctrl</kbd><kbd>K</kbd> <span style="font-size:0.6875rem;color:var(--h-text-4);margin-left:0.25rem;">to search points</span></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="welcome-footer">
+                <div class="step-dots" aria-label="Step indicator">
+                    <span class="dot active" data-dot="0"></span>
+                    <span class="dot" data-dot="1"></span>
+                    <span class="dot" data-dot="2"></span>
+                    <span class="dot" data-dot="3"></span>
+                </div>
+                <div class="btn-row">
+                    <button class="btn btn-ghost btn-sm" id="welcome-back-btn" onclick="welcomeStep(-1)" style="display:none;">Back</button>
+                    <button class="btn btn-accent btn-sm" id="welcome-next-btn" onclick="welcomeStep(1)">Next</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ============================================
          Header
          ============================================ -->
@@ -877,6 +1312,9 @@
             <span class="stat-pill" style="color: var(--h-emerald);">{{ (metadata.get('accuracy', 0) * 100)|round(1) }}% acc</span>
         </div>
         <div class="header-controls">
+            <button class="btn-icon" onclick="showWelcome()" title="How it works" aria-label="Show help guide" id="help-btn">
+                ?
+            </button>
             <button class="btn-icon" onclick="toggleViewMode()" title="Toggle 2D/3D" aria-label="Toggle 2D/3D view" id="view-toggle-btn">
                 <span id="view-toggle-icon">◇</span>
             </button>
@@ -897,25 +1335,44 @@
                     <h2>Classification</h2>
                 </div>
                 <div class="card-body">
-                    <!-- Input -->
-                    <div class="input-group">
-                        <label for="query-input" class="sr-only">Product description</label>
-                        <textarea
-                            id="query-input"
-                            placeholder="Describe a product in any language…"
-                            rows="3"
-                            aria-label="Product description input"
-                        ></textarea>
-                        <div class="input-hint">⌘+Enter to classify · Supports EN, TH, VI, ZH and more</div>
+                    <!-- Input Mode Tabs -->
+                    <div class="input-tabs" role="tablist">
+                        <button class="input-tab active" role="tab" onclick="switchInputTab('text')" id="tab-text">Text Input</button>
+                        <button class="input-tab" role="tab" onclick="switchInputTab('upload')" id="tab-upload">Document Upload</button>
                     </div>
 
-                    <div class="button-row">
-                        <button class="btn btn-primary" onclick="classify()" id="classify-btn" aria-label="Classify product">
-                            Classify
-                        </button>
-                        <button class="btn btn-ghost" onclick="clearAll()" aria-label="Clear input and results">
-                            Clear
-                        </button>
+                    <!-- Text Input Tab -->
+                    <div class="tab-content active" id="tab-content-text">
+                        <div class="input-group">
+                            <label for="query-input" class="sr-only">Product description</label>
+                            <textarea
+                                id="query-input"
+                                placeholder="Describe a product in any language…"
+                                rows="3"
+                                aria-label="Product description input"
+                            ></textarea>
+                            <div class="input-hint">⌘+Enter to classify · Supports EN, TH, VI, ZH and more</div>
+                        </div>
+
+                        <div class="button-row">
+                            <button class="btn btn-primary" onclick="classify()" id="classify-btn" aria-label="Classify product">
+                                Classify
+                            </button>
+                            <button class="btn btn-ghost" onclick="clearAll()" aria-label="Clear input and results">
+                                Clear
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Document Upload Tab -->
+                    <div class="tab-content" id="tab-content-upload">
+                        <div class="upload-zone" id="upload-zone">
+                            <div class="upload-icon">&#128196;</div>
+                            <p><strong>Drop a document here</strong> or click to browse</p>
+                            <p>Supports PDF, PNG, JPG, TIFF</p>
+                            <input type="file" id="file-input" accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif,.bmp,.webp" aria-label="Upload document">
+                        </div>
+                        <div id="upload-result-area"></div>
                     </div>
 
                     <!-- Examples -->
@@ -958,6 +1415,11 @@
                         <div class="section-label" style="margin-top: 0.25rem;">Results</div>
                         <div id="results-container"></div>
                         <div class="inference-badge" id="inference-time"></div>
+                        <div id="coverage-note" style="font-size:0.625rem;color:var(--h-text-4);margin-top:0.5rem;padding:0.5rem 0.625rem;background:var(--h-bg-surface);border-radius:var(--h-radius);border:1px solid var(--h-border);display:none;">
+                            <strong style="color:var(--h-text-3);">POC Coverage:</strong>
+                            This model covers {{ metadata.get('n_codes', '?') }} of {{ metadata.get('n_codes_full_dataset', '5,600+') }} HS codes ({{ metadata.get('n_chapters', '?') }} chapters) with {{ (metadata.get('accuracy', 0) * 100)|round(1) }}% accuracy on curated training data.
+                            Predictions outside covered codes may be less reliable.
+                        </div>
                         <div class="similar-section hidden" id="similar-section">
                             <div class="section-label">Nearest Training Examples</div>
                             <div id="similar-container"></div>
@@ -1383,14 +1845,21 @@
             html += `
                 <div class="result-card ${isTop ? 'top-result' : ''}" style="animation-delay:${i * 0.06}s">
                     <div class="result-header">
-                        <span class="hs-code-tag">${pred.hs_code}</span>
+                        <span class="hs-code-tag">${escapeHtml(pred.hs_code)}</span>
                         <div class="confidence-bar-track">
                             <div class="confidence-bar-fill" style="width:${conf}%;background:${barColor}"></div>
                         </div>
                         <span class="confidence-value" style="color:${barColor}">${conf}%</span>
                     </div>
-                    <div class="result-desc">${pred.description}</div>
-                    <span class="result-meta">${pred.chapter} · Ch.${pred.chapter_code} · H.${pred.heading_code}</span>
+                    <div class="result-desc">${escapeHtml(pred.description)}</div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:0.35rem;">
+                        <span class="result-meta" style="margin-top:0">${escapeHtml(pred.chapter)} · Ch.${escapeHtml(pred.chapter_code)} · H.${escapeHtml(pred.heading_code)}</span>
+                        <div class="feedback-row" style="margin-top:0">
+                            <span class="fb-label">Correct?</span>
+                            <button class="feedback-btn" onclick="sendFeedback(this,'up','${escapeHtml(pred.hs_code)}','${escapeHtml(data.query)}')" title="Correct prediction">&#9650;</button>
+                            <button class="feedback-btn" onclick="sendFeedback(this,'down','${escapeHtml(pred.hs_code)}','${escapeHtml(data.query)}')" title="Wrong prediction">&#9660;</button>
+                        </div>
+                    </div>
                 </div>
             `;
         });
@@ -1398,6 +1867,7 @@
         container.innerHTML = html;
         document.getElementById('inference-time').innerHTML =
             `⚡ ${data.inference_time_ms}ms`;
+        document.getElementById('coverage-note').style.display = 'block';
 
         // Similar examples
         const simSection = document.getElementById('similar-section');
@@ -1535,6 +2005,7 @@
        Actions
        —————————————————————————————————————————— */
     function setExample(text) {
+        switchInputTab('text');
         document.getElementById('query-input').value = text;
         classify();
     }
@@ -1590,6 +2061,161 @@
     }
 
     /* ——————————————————————————————————————————
+       Input Tabs (Text / Upload)
+       —————————————————————————————————————————— */
+    function switchInputTab(mode) {
+        document.querySelectorAll('.input-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.getElementById('tab-' + mode).classList.add('active');
+        document.getElementById('tab-content-' + mode).classList.add('active');
+    }
+
+    /* ——————————————————————————————————————————
+       Document Upload
+       —————————————————————————————————————————— */
+    (function initUpload() {
+        const zone = document.getElementById('upload-zone');
+        const fileInput = document.getElementById('file-input');
+        if (!zone || !fileInput) return;
+
+        ['dragenter', 'dragover'].forEach(evt => {
+            zone.addEventListener(evt, (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+        });
+        ['dragleave', 'drop'].forEach(evt => {
+            zone.addEventListener(evt, (e) => { e.preventDefault(); zone.classList.remove('dragover'); });
+        });
+
+        zone.addEventListener('drop', (e) => {
+            const files = e.dataTransfer.files;
+            if (files.length > 0) handleUpload(files[0]);
+        });
+
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files.length > 0) handleUpload(fileInput.files[0]);
+            fileInput.value = '';
+        });
+    })();
+
+    async function handleUpload(file) {
+        const zone = document.getElementById('upload-zone');
+        const resultArea = document.getElementById('upload-result-area');
+
+        zone.innerHTML = '<div class="spinner" style="margin:0.5rem auto;"></div><p style="font-size:0.75rem;color:var(--h-text-4);">Processing ' + escapeHtml(file.name) + '…</p>';
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            const resp = await fetch('/upload-document', { method: 'POST', body: formData });
+            const data = await resp.json();
+
+            // Restore the upload zone
+            zone.innerHTML = '<div class="upload-icon">&#128196;</div><p><strong>Drop a document here</strong> or click to browse</p><p>Supports PDF, PNG, JPG, TIFF</p><input type="file" id="file-input" accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif,.bmp,.webp" aria-label="Upload document">';
+            // Re-attach file input listener
+            document.getElementById('file-input').addEventListener('change', function() {
+                if (this.files.length > 0) handleUpload(this.files[0]);
+                this.value = '';
+            });
+
+            if (data.error) {
+                resultArea.innerHTML = `<div class="upload-result"><span style="font-size:0.75rem;color:var(--h-red);">${escapeHtml(data.error)}</span></div>`;
+                return;
+            }
+
+            const fields = data.fields || {};
+            const fieldTags = Object.entries(fields)
+                .filter(([k, v]) => v && String(v).trim())
+                .map(([k, v]) => `<span class="field-tag">${escapeHtml(k)}: ${escapeHtml(String(v).substring(0, 50))}</span>`)
+                .join('');
+
+            const truncatedText = (data.raw_text || '').substring(0, 300);
+
+            resultArea.innerHTML = `
+                <div class="upload-result">
+                    <div class="upload-result-header">
+                        <span>&#10003; Extracted from ${escapeHtml(data.filename)}</span>
+                        <button onclick="this.closest('.upload-result').remove()">&#10005;</button>
+                    </div>
+                    <div class="extracted-text">${escapeHtml(truncatedText)}${data.raw_text && data.raw_text.length > 300 ? '…' : ''}</div>
+                    ${fieldTags ? '<div class="extracted-fields">' + fieldTags + '</div>' : ''}
+                    <div class="button-row" style="margin-top:0.625rem;">
+                        <button class="btn btn-accent btn-sm" onclick="useExtractedText()">Classify Extracted Text</button>
+                    </div>
+                </div>
+            `;
+
+            // Store the raw text for classification
+            resultArea.dataset.rawText = data.raw_text || '';
+            // If product description was extracted, store it separately
+            if (fields.product_description) {
+                resultArea.dataset.productDesc = fields.product_description;
+            }
+        } catch (error) {
+            zone.innerHTML = '<div class="upload-icon">&#128196;</div><p><strong>Drop a document here</strong> or click to browse</p><p>Supports PDF, PNG, JPG, TIFF</p><input type="file" id="file-input" accept=".pdf,.png,.jpg,.jpeg,.tiff,.tif,.bmp,.webp" aria-label="Upload document">';
+            resultArea.innerHTML = `<div class="upload-result"><span style="font-size:0.75rem;color:var(--h-red);">Upload failed: ${escapeHtml(error.message)}</span></div>`;
+        }
+    }
+
+    function useExtractedText() {
+        const resultArea = document.getElementById('upload-result-area');
+        const text = resultArea.dataset.productDesc || resultArea.dataset.rawText || '';
+        if (!text.trim()) return;
+
+        // Switch to text tab and populate
+        switchInputTab('text');
+        document.getElementById('query-input').value = text.substring(0, 500);
+        classify();
+    }
+
+    /* ——————————————————————————————————————————
+       Feedback
+       —————————————————————————————————————————— */
+    let feedbackLog = [];
+
+    function sendFeedback(btn, direction, hsCode, query) {
+        // Toggle buttons in the same row
+        const row = btn.closest('.feedback-row');
+        row.querySelectorAll('.feedback-btn').forEach(b => {
+            b.classList.remove('selected-up', 'selected-down');
+        });
+        btn.classList.add(direction === 'up' ? 'selected-up' : 'selected-down');
+
+        // Log feedback locally
+        const entry = {
+            timestamp: new Date().toISOString(),
+            query: query,
+            hs_code: hsCode,
+            feedback: direction === 'up' ? 'correct' : 'incorrect',
+        };
+        feedbackLog.push(entry);
+
+        // Persist to localStorage for demo purposes
+        try {
+            localStorage.setItem('hsclassify_feedback', JSON.stringify(feedbackLog));
+        } catch(e) {}
+
+        // Show toast
+        showToast(direction === 'up' ? 'Marked as correct — thanks!' : 'Marked as incorrect — noted for improvement');
+    }
+
+    function showToast(message) {
+        const existing = document.querySelector('.feedback-toast');
+        if (existing) existing.remove();
+
+        const toast = document.createElement('div');
+        toast.className = 'feedback-toast';
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 2500);
+    }
+
+    // Load any previous feedback
+    try {
+        const saved = localStorage.getItem('hsclassify_feedback');
+        if (saved) feedbackLog = JSON.parse(saved);
+    } catch(e) {}
+
+    /* ——————————————————————————————————————————
        Keyboard shortcuts
        —————————————————————————————————————————— */
     document.addEventListener('keydown', (e) => {
@@ -1598,8 +2224,12 @@
             e.preventDefault();
             classify();
         }
-        // Escape to close detail / exit fullscreen
+        // Escape to close detail / welcome / exit fullscreen
         if (e.key === 'Escape') {
+            if (!document.getElementById('welcome-overlay').classList.contains('hidden')) {
+                dismissWelcome();
+                return;
+            }
             closePointDetail();
             if (isFullscreen) toggleFullscreen();
         }
@@ -1611,9 +2241,68 @@
     });
 
     /* ——————————————————————————————————————————
+       Welcome / First-use Explainer
+       —————————————————————————————————————————— */
+    let currentWelcomeStep = 0;
+    const TOTAL_WELCOME_STEPS = 4;
+    const WELCOME_STORAGE_KEY = 'hsclassify_welcomed';
+
+    function showWelcome() {
+        currentWelcomeStep = 0;
+        updateWelcomeUI();
+        document.getElementById('welcome-overlay').classList.remove('hidden');
+    }
+
+    function dismissWelcome() {
+        document.getElementById('welcome-overlay').classList.add('hidden');
+        try { localStorage.setItem(WELCOME_STORAGE_KEY, '1'); } catch(e) {}
+    }
+
+    function welcomeStep(direction) {
+        const next = currentWelcomeStep + direction;
+        if (next >= TOTAL_WELCOME_STEPS) {
+            dismissWelcome();
+            return;
+        }
+        if (next < 0) return;
+        currentWelcomeStep = next;
+        updateWelcomeUI();
+    }
+
+    function updateWelcomeUI() {
+        document.querySelectorAll('.welcome-step').forEach(el => el.classList.remove('active'));
+        const activeStep = document.querySelector(`.welcome-step[data-step="${currentWelcomeStep}"]`);
+        if (activeStep) activeStep.classList.add('active');
+
+        document.querySelectorAll('.step-dots .dot').forEach(d => d.classList.remove('active'));
+        const activeDot = document.querySelector(`.dot[data-dot="${currentWelcomeStep}"]`);
+        if (activeDot) activeDot.classList.add('active');
+
+        const backBtn = document.getElementById('welcome-back-btn');
+        const nextBtn = document.getElementById('welcome-next-btn');
+        backBtn.style.display = currentWelcomeStep > 0 ? '' : 'none';
+        nextBtn.textContent = currentWelcomeStep === TOTAL_WELCOME_STEPS - 1 ? 'Get Started' : 'Next';
+    }
+
+    // Close overlay on background click or Escape
+    document.getElementById('welcome-overlay').addEventListener('click', function(e) {
+        if (e.target === this) dismissWelcome();
+    });
+
+    /* ——————————————————————————————————————————
        Init
        —————————————————————————————————————————— */
-    window.addEventListener('load', loadVisualization);
+    window.addEventListener('load', () => {
+        loadVisualization();
+        // Show welcome on first visit
+        try {
+            if (!localStorage.getItem(WELCOME_STORAGE_KEY)) {
+                showWelcome();
+            }
+        } catch(e) {
+            showWelcome();
+        }
+    });
     window.addEventListener('resize', () => {
         if (plotInitialized) {
             Plotly.Plots.resize(document.getElementById('umap-plot'));
