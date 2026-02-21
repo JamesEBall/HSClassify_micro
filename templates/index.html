@@ -1447,7 +1447,11 @@
                     <div class="toolbar-group">
                         <input type="text" class="search-mini" id="point-search" placeholder="Search points…" oninput="searchPoints()" aria-label="Search visualization points">
                     </div>
+                    <div class="toolbar-group">
+                        <span id="point-count" class="stat-pill" style="font-size:0.5625rem;display:none;"></span>
+                    </div>
                     <div style="margin-left:auto;" class="toolbar-group">
+                        <button class="btn-icon" onclick="resetFilters()" title="Clear filters" aria-label="Clear all filters" id="clear-filters-btn" style="display:none;">&#10005;</button>
                         <button class="btn-icon" onclick="resetView()" title="Reset zoom" aria-label="Reset zoom">↺</button>
                         <button class="btn-icon" onclick="exportPlot('png')" title="Export PNG" aria-label="Export as PNG">📷</button>
                         <button class="btn-icon" onclick="exportPlot('svg')" title="Export SVG" aria-label="Export as SVG">✎</button>
@@ -1623,7 +1627,20 @@
         if (language !== 'all') filtered = filtered.filter(p => p.language === language);
         if (searchTerm) filtered = filtered.filter(p => p.text.toLowerCase().includes(searchTerm));
 
+        // Show/hide clear filters button
+        const hasFilter = chapter !== 'all' || language !== 'all' || searchTerm;
+        const clearBtn = document.getElementById('clear-filters-btn');
+        if (clearBtn) clearBtn.style.display = hasFilter ? '' : 'none';
+
         renderPlot(filtered);
+    }
+
+    function resetFilters() {
+        document.getElementById('chapter-filter').value = 'all';
+        document.getElementById('language-filter').value = 'all';
+        document.getElementById('point-search').value = '';
+        document.getElementById('clear-filters-btn').style.display = 'none';
+        renderPlot(allPoints);
     }
 
     function searchPoints() {
@@ -1675,10 +1692,48 @@
                 '<extra>%{fullData.name}</extra>',
         }));
 
+        // Cluster labels — show chapter names at the medoid (densest point)
+        // Uses the point closest to the geometric median for better placement
+        const annotations = chapterEntries
+            .filter(([_, pts]) => pts.x.length >= 15)  // Only label sizable clusters
+            .map(([chapter, pts]) => {
+                // Find medoid: the actual data point closest to the mean
+                const mx = pts.x.reduce((a, b) => a + b, 0) / pts.x.length;
+                const my = pts.y.reduce((a, b) => a + b, 0) / pts.y.length;
+                let bestIdx = 0, bestDist = Infinity;
+                for (let i = 0; i < pts.x.length; i++) {
+                    const d = (pts.x[i] - mx) ** 2 + (pts.y[i] - my) ** 2;
+                    if (d < bestDist) { bestDist = d; bestIdx = i; }
+                }
+                return {
+                    x: pts.x[bestIdx],
+                    y: pts.y[bestIdx],
+                    text: chapter,
+                    showarrow: false,
+                    font: {
+                        size: Math.min(11, 7 + Math.log2(pts.x.length)),
+                        color: categoryColorMap[chapter] || 'rgba(255,255,255,0.35)',
+                        family: "'Inter', sans-serif",
+                    },
+                    opacity: 0.5,
+                    xanchor: 'center',
+                    yanchor: 'bottom',
+                    yshift: 6,
+                };
+            });
+
+        // Update point count badge
+        const countBadge = document.getElementById('point-count');
+        if (countBadge) {
+            countBadge.textContent = points.length.toLocaleString() + ' points';
+            countBadge.style.display = '';
+        }
+
         const layout = {
             paper_bgcolor: '#0a0a0a',
             plot_bgcolor: '#0a0a0a',
             showlegend: showLegend,
+            annotations: annotations,
             font: {
                 color: 'rgba(255,255,255,0.3)',
                 family: "'Inter', sans-serif",
@@ -1778,19 +1833,33 @@
 
         body.innerHTML = payload.neighbors.map((n, i) => {
             const hsCode = String(n.hs_code || '').padStart(6, '0');
-            const similarityPct = ((n.similarity || 0) * 100).toFixed(1);
+            const similarity = n.similarity || 0;
+            const similarityPct = (similarity * 100).toFixed(1);
             const distanceVal = (n.distance || 0).toFixed(4);
-            const topMarker = topPred === hsCode ? ' ★' : '';
+            const topMarker = topPred === hsCode ? ' <span style="color:var(--h-amber);">★</span>' : '';
             const category = escapeHtml(n.chapter_name || n.chapter || 'Unknown');
+            const desc = escapeHtml(n.hs_desc || 'Unknown');
+            const text = escapeHtml((n.text || '').substring(0, 60));
+            const barColor = similarity > 0.8 ? 'var(--h-emerald)' : similarity > 0.5 ? 'var(--h-amber)' : 'var(--h-red)';
             return `
-                <div class="latent-distance-row">
-                    <span class="latent-distance-rank">${i + 1}</span>
-                    <span class="latent-distance-code">${escapeHtml(hsCode)}${topMarker}<br><span style="color:var(--h-text-4);font-size:0.625rem">${category}</span></span>
-                    <span class="latent-distance-sim">sim ${similarityPct}%</span>
-                    <span class="latent-distance-dist">d ${distanceVal}</span>
+                <div style="padding:0.35rem 0;border-top:1px solid rgba(255,255,255,0.03);${i === 0 ? 'border-top:none;' : ''}">
+                    <div class="latent-distance-row" style="margin-bottom:0.15rem;">
+                        <span class="latent-distance-rank">${i + 1}</span>
+                        <span class="latent-distance-code">${escapeHtml(hsCode)}${topMarker}</span>
+                        <span class="latent-distance-sim">${similarityPct}%</span>
+                        <span class="latent-distance-dist">d ${distanceVal}</span>
+                    </div>
+                    <div style="margin-left:20px;">
+                        <div style="height:3px;background:rgba(255,255,255,0.05);border-radius:2px;margin-bottom:0.2rem;">
+                            <div style="height:100%;width:${similarityPct}%;background:${barColor};border-radius:2px;transition:width 0.4s ease;"></div>
+                        </div>
+                        <div style="font-size:0.5625rem;color:var(--h-text-4);line-height:1.3;">
+                            ${desc !== 'Unknown' ? '<span style="color:var(--h-text-3);">' + desc + '</span> · ' : ''}${category}${text ? '<br><span style="font-style:italic;">"' + text + '"</span>' : ''}
+                        </div>
+                    </div>
                 </div>
             `;
-        }).join('') + '<div class="latent-distance-note">Cosine distance in embedding space: lower is closer.</div>';
+        }).join('') + '<div class="latent-distance-note">Cosine similarity in embedding space. Higher = closer match.</div>';
 
         panel.classList.add('visible');
     }
@@ -1975,10 +2044,25 @@
                 showlegend: true,
             };
 
+            // Connector lines from query to each neighbor
+            const connectorTraces = neighbors.map((n, i) => ({
+                x: [data.x, n.x],
+                y: [data.y, n.y],
+                mode: 'lines',
+                type: 'scatter',
+                line: {
+                    color: `rgba(59, 130, 246, ${0.15 + (n.similarity || 0) * 0.35})`,
+                    width: 1,
+                    dash: i === 0 ? 'solid' : 'dot',
+                },
+                hoverinfo: 'skip',
+                showlegend: false,
+            }));
+
             clearQueryOverlay();
 
-            Plotly.addTraces('umap-plot', [neighborTrace, queryTrace]);
-            queryOverlayTraceCount = 2;
+            Plotly.addTraces('umap-plot', [...connectorTraces, neighborTrace, queryTrace]);
+            queryOverlayTraceCount = connectorTraces.length + 2;
             renderLatentDistancePanel({
                 neighbors,
                 predictions: resultData && resultData.predictions ? resultData.predictions : [],
