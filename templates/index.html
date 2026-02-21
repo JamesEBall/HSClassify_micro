@@ -1416,9 +1416,8 @@
                         <div id="results-container"></div>
                         <div class="inference-badge" id="inference-time"></div>
                         <div id="coverage-note" style="font-size:0.625rem;color:var(--h-text-4);margin-top:0.5rem;padding:0.5rem 0.625rem;background:var(--h-bg-surface);border-radius:var(--h-radius);border:1px solid var(--h-border);display:none;">
-                            <strong style="color:var(--h-text-3);">POC Coverage:</strong>
-                            This model covers {{ metadata.get('n_codes', '?') }} of {{ metadata.get('n_codes_full_dataset', '5,600+') }} HS codes ({{ metadata.get('n_chapters', '?') }} chapters) with {{ (metadata.get('accuracy', 0) * 100)|round(1) }}% accuracy on curated training data.
-                            Predictions outside covered codes may be less reliable.
+                            <strong style="color:var(--h-text-3);">Model Coverage:</strong>
+                            {{ metadata.get('n_codes', '?') }} HS codes across {{ metadata.get('n_chapters', '?') }} chapters &middot; {{ (metadata.get('accuracy', 0) * 100)|round(1) }}% test accuracy &middot; {{ '{:,}'.format(metadata.get('n_examples', 0)) }} training examples.
                         </div>
                         <div class="similar-section hidden" id="similar-section">
                             <div class="section-label">Nearest Training Examples</div>
@@ -1562,10 +1561,16 @@
     /* ——————————————————————————————————————————
        Visualization
        —————————————————————————————————————————— */
+    let vizSampled = false;
+    let vizTotal = 0;
+    const VIZ_SAMPLE_LIMIT = 12000;
+
     async function loadVisualization() {
         try {
-            const response = await fetch('/visualization-data');
+            const response = await fetch('/visualization-data?max_points=' + VIZ_SAMPLE_LIMIT);
             const data = await response.json();
+            vizSampled = !!data.sampled;
+            vizTotal = data.total || data.points?.length || 0;
 
             if (!data.points || data.points.length === 0) {
                 document.getElementById('umap-loading').classList.add('hidden');
@@ -1643,8 +1648,10 @@
         renderPlot(allPoints);
     }
 
+    let _searchTimer = null;
     function searchPoints() {
-        applyFilters();
+        clearTimeout(_searchTimer);
+        _searchTimer = setTimeout(applyFilters, 200);
     }
 
     function buildCategoryColorMap(categories) {
@@ -1672,13 +1679,13 @@
             x: pts.x,
             y: pts.y,
             mode: 'markers',
-            type: is3D ? 'scatter3d' : 'scatter',
+            type: is3D ? 'scatter3d' : 'scattergl',
             name: chapter,
             showlegend: showLegend,
             marker: {
-                size: is3D ? 2.5 : 4,
+                size: is3D ? 2.5 : (points.length > 20000 ? 2 : 4),
                 color: categoryColorMap[chapter] || '#6b7280',
-                opacity: 0.65,
+                opacity: points.length > 20000 ? 0.5 : 0.65,
                 line: { width: 0, color: 'transparent' }
             },
             text: pts.text,
@@ -1692,37 +1699,80 @@
                 '<extra>%{fullData.name}</extra>',
         }));
 
-        // Cluster labels — positioned at top-center of the cluster bounding box
-        // so they float above the points rather than overlapping them
-        const annotations = chapterEntries
-            .filter(([_, pts]) => pts.x.length >= 15)  // Only label sizable clusters
-            .map(([chapter, pts]) => {
-                // Place at the horizontal center, vertical top of the cluster
-                const xMin = Math.min(...pts.x);
-                const xMax = Math.max(...pts.x);
-                const yMax = Math.max(...pts.y);
-                const cx = (xMin + xMax) / 2;
-                return {
-                    x: cx,
-                    y: yMax,
-                    text: chapter,
-                    showarrow: false,
-                    font: {
-                        size: Math.min(11, 7 + Math.log2(pts.x.length)),
-                        color: categoryColorMap[chapter] || 'rgba(255,255,255,0.35)',
-                        family: "'Inter', sans-serif",
-                    },
-                    opacity: 0.45,
-                    xanchor: 'center',
-                    yanchor: 'bottom',
-                    yshift: 10,
-                };
-            });
+        // Cluster labels — positioned at geometric median of each cluster
+        // Only label the top N largest clusters to avoid clutter, with collision avoidance
+        const MIN_CLUSTER_SIZE = 40;  // Only label clusters with 40+ points
+        const MAX_LABELS = 25;        // Cap total labels to prevent visual noise
+
+        // Sort by cluster size descending, take top N that meet minimum
+        const labelCandidates = chapterEntries
+            .filter(([_, pts]) => pts.x.length >= MIN_CLUSTER_SIZE)
+            .sort((a, b) => b[1].x.length - a[1].x.length)
+            .slice(0, MAX_LABELS);
+
+        // Compute geometric median (iterative Weiszfeld algorithm, 10 iterations)
+        function geoMedian(xs, ys) {
+            let mx = xs.reduce((a,b) => a+b, 0) / xs.length;
+            let my = ys.reduce((a,b) => a+b, 0) / ys.length;
+            for (let iter = 0; iter < 10; iter++) {
+                let wx = 0, wy = 0, wsum = 0;
+                for (let i = 0; i < xs.length; i++) {
+                    const d = Math.sqrt((xs[i]-mx)**2 + (ys[i]-my)**2) || 1e-8;
+                    const w = 1 / d;
+                    wx += xs[i] * w; wy += ys[i] * w; wsum += w;
+                }
+                mx = wx / wsum; my = wy / wsum;
+            }
+            return [mx, my];
+        }
+
+        // Place labels at geometric median with slight upward offset
+        const rawAnnotations = labelCandidates.map(([chapter, pts]) => {
+            const [cx, cy] = geoMedian(pts.x, pts.y);
+            return {
+                x: cx,
+                y: cy,
+                text: chapter.length > 20 ? chapter.slice(0, 18) + '…' : chapter,
+                showarrow: false,
+                font: {
+                    size: Math.min(12, 8 + Math.log2(pts.x.length)),
+                    color: categoryColorMap[chapter] || 'rgba(255,255,255,0.5)',
+                    family: "'Inter', sans-serif",
+                    weight: 'bold',
+                },
+                opacity: 0.55,
+                xanchor: 'center',
+                yanchor: 'middle',
+                bgcolor: 'rgba(10,10,10,0.6)',
+                borderpad: 2,
+            };
+        });
+
+        // Simple collision avoidance: nudge overlapping labels apart
+        const NUDGE_DIST = 1.5;
+        for (let i = 0; i < rawAnnotations.length; i++) {
+            for (let j = i + 1; j < rawAnnotations.length; j++) {
+                const dx = rawAnnotations[j].x - rawAnnotations[i].x;
+                const dy = rawAnnotations[j].y - rawAnnotations[i].y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < NUDGE_DIST && dist > 0) {
+                    const push = (NUDGE_DIST - dist) / 2;
+                    const nx = (dx / dist) * push;
+                    const ny = (dy / dist) * push;
+                    rawAnnotations[i].x -= nx; rawAnnotations[i].y -= ny;
+                    rawAnnotations[j].x += nx; rawAnnotations[j].y += ny;
+                }
+            }
+        }
+        const annotations = rawAnnotations;
 
         // Update point count badge
         const countBadge = document.getElementById('point-count');
         if (countBadge) {
-            countBadge.textContent = points.length.toLocaleString() + ' points';
+            const label = vizSampled
+                ? points.length.toLocaleString() + ' of ' + vizTotal.toLocaleString() + ' points (sampled)'
+                : points.length.toLocaleString() + ' points';
+            countBadge.textContent = label;
             countBadge.style.display = '';
         }
 

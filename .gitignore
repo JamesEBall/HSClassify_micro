@@ -10,11 +10,12 @@ venv/
 .venv/
 env/
 
-# Model weights (too large for GitHub - download separately)
+# Model weights and cached data (too large for GitHub - regenerated at startup)
 models/sentence_model/model.safetensors
 models/sentence_model/tokenizer.json
 models/*.npy
 models/*.pkl
+models/umap_data.json
 
 # IDE
 .vscode/

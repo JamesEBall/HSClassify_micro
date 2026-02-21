@@ -46,7 +46,10 @@ MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 ALLOWED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".tiff", ".tif", ".bmp", ".pdf"}
 
 # Initialize FastAPI
+from starlette.middleware.gzip import GZipMiddleware
+
 app = FastAPI(title="HS Code Classifier", version="2.0.0")
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 app.mount("/static", StaticFiles(directory=str(PROJECT_DIR / "static")), name="static")
 templates = Jinja2Templates(directory=str(PROJECT_DIR / "templates"))
 
@@ -551,18 +554,40 @@ async def hts_countries():
 
 
 @app.get("/visualization-data")
-async def get_visualization_data():
-    """Return UMAP projection data for visualization."""
-    if umap_data:
-        return JSONResponse({"points": umap_data})
-    
-    cache_path = MODEL_DIR / "umap_data.json"
-    if cache_path.exists():
-        with open(cache_path, encoding="utf-8") as f:
-            data = json.load(f)
-        return JSONResponse({"points": data})
-    
-    return JSONResponse({"points": [], "error": "No UMAP data available"})
+async def get_visualization_data(request: Request):
+    """Return UMAP projection data for visualization.
+
+    Supports ``?max_points=N`` to subsample for faster initial load.
+    The subsample is stratified by chapter so every category is represented.
+    """
+    max_points = int(request.query_params.get("max_points", "0"))
+
+    points = umap_data
+    if not points:
+        cache_path = MODEL_DIR / "umap_data.json"
+        if cache_path.exists():
+            with open(cache_path, encoding="utf-8") as f:
+                points = json.load(f)
+
+    if not points:
+        return JSONResponse({"points": [], "error": "No UMAP data available"})
+
+    total = len(points)
+    if 0 < max_points < total:
+        # Stratified subsample: keep proportional representation per chapter
+        import random as _rng
+        _rng.seed(42)
+        by_chapter: dict[str, list] = {}
+        for p in points:
+            by_chapter.setdefault(p.get("chapter_name", "Other"), []).append(p)
+        sampled: list = []
+        for ch, ch_pts in by_chapter.items():
+            n = max(1, round(len(ch_pts) / total * max_points))
+            sampled.extend(_rng.sample(ch_pts, min(n, len(ch_pts))))
+        _rng.shuffle(sampled)
+        return JSONResponse({"points": sampled, "total": total, "sampled": True})
+
+    return JSONResponse({"points": points, "total": total})
 
 
 @app.post("/embed-query")
