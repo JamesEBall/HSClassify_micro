@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -66,6 +66,55 @@
             /* Font */
             --h-font:        'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
             --h-mono:        'JetBrains Mono', 'Fira Code', ui-monospace, monospace;
+
+            /* Overlay / Modal */
+            --h-overlay-bg:   rgba(10,10,10,0.92);
+            --h-modal-bg:     #111111;
+            --h-modal-shadow:  0 25px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.04);
+            --h-backdrop:     rgba(0, 0, 0, 0.7);
+        }
+
+        /* ============================================
+           Light theme overrides
+           ============================================ */
+        :root.light {
+            --h-bg:          #ffffff;
+            --h-bg-raised:   rgba(0,0,0,0.02);
+            --h-bg-surface:  rgba(0,0,0,0.03);
+            --h-bg-hover:    rgba(0,0,0,0.05);
+            --h-bg-active:   rgba(0,0,0,0.08);
+
+            --h-border:      rgba(0,0,0,0.08);
+            --h-border-mid:  rgba(0,0,0,0.12);
+            --h-border-strong: rgba(0,0,0,0.18);
+
+            --h-text:        #111111;
+            --h-text-2:      rgba(0,0,0,0.70);
+            --h-text-3:      rgba(0,0,0,0.50);
+            --h-text-4:      rgba(0,0,0,0.35);
+            --h-text-5:      rgba(0,0,0,0.20);
+
+            --h-accent:      #2563eb;
+            --h-accent-soft: rgba(37,99,235,0.10);
+            --h-accent-glow: rgba(37,99,235,0.20);
+
+            --h-emerald:     #059669;
+            --h-emerald-soft:rgba(5,150,105,0.10);
+            --h-amber:       #d97706;
+            --h-amber-soft:  rgba(217,119,6,0.10);
+            --h-red:         #dc2626;
+            --h-red-soft:    rgba(220,38,38,0.10);
+            --h-purple:      #7c3aed;
+            --h-purple-soft: rgba(124,58,237,0.10);
+            --h-pink:        #db2777;
+            --h-cyan:        #0891b2;
+
+            --h-shadow:      0 1px 3px rgba(0,0,0,0.1);
+
+            --h-overlay-bg:   rgba(255,255,255,0.95);
+            --h-modal-bg:     #ffffff;
+            --h-modal-shadow:  0 25px 60px rgba(0,0,0,0.15), 0 0 0 1px rgba(0,0,0,0.06);
+            --h-backdrop:     rgba(0, 0, 0, 0.3);
         }
 
         /* ============================================
@@ -655,7 +704,7 @@
             bottom: 1rem;
             left: 1rem;
             right: 1rem;
-            background: rgba(10,10,10,0.92);
+            background: var(--h-overlay-bg);
             backdrop-filter: blur(12px);
             border: 1px solid var(--h-border-mid);
             border-radius: var(--h-radius-lg);
@@ -712,7 +761,7 @@
             top: 1rem;
             right: 1rem;
             width: min(360px, calc(100% - 2rem));
-            background: rgba(10,10,10,0.92);
+            background: var(--h-overlay-bg);
             backdrop-filter: blur(12px);
             border: 1px solid var(--h-border-mid);
             border-radius: var(--h-radius-lg);
@@ -864,7 +913,7 @@
             position: fixed;
             inset: 0;
             z-index: 1000;
-            background: rgba(0, 0, 0, 0.7);
+            background: var(--h-backdrop);
             backdrop-filter: blur(6px);
             display: flex;
             align-items: center;
@@ -873,13 +922,13 @@
         }
 
         .welcome-modal {
-            background: #111111;
+            background: var(--h-modal-bg);
             border: 1px solid var(--h-border-mid);
             border-radius: var(--h-radius-xl);
             width: min(520px, calc(100vw - 2rem));
             max-height: calc(100vh - 4rem);
             overflow: hidden;
-            box-shadow: 0 25px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255,255,255,0.04);
+            box-shadow: var(--h-modal-shadow);
             animation: slideUp 0.3s ease;
         }
 
@@ -1163,7 +1212,7 @@
             bottom: 1.5rem;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(10,10,10,0.95);
+            background: var(--h-overlay-bg);
             border: 1px solid var(--h-border-mid);
             border-radius: var(--h-radius-full);
             padding: 0.5rem 1rem;
@@ -1320,6 +1369,9 @@
             </button>
             <button class="btn-icon" onclick="toggleFullscreen()" title="Fullscreen visualization" aria-label="Toggle fullscreen" id="fullscreen-btn">
                 ⛶
+            </button>
+            <button class="btn-icon" onclick="cycleTheme()" title="Toggle theme" aria-label="Toggle theme" id="theme-toggle-btn">
+                ◑
             </button>
         </div>
     </header>
@@ -1547,6 +1599,172 @@
     ];
 
     /* ——————————————————————————————————————————
+       Theme Switching (system / dark / light)
+       —————————————————————————————————————————— */
+    const THEME_KEY = 'hsclassify_theme';
+    const THEME_CYCLE = ['system', 'dark', 'light'];
+    const THEME_ICONS = { system: '\u25D1', dark: '\u263E', light: '\u2600' };
+    const THEME_TITLES = { system: 'Theme: System', dark: 'Theme: Dark', light: 'Theme: Light' };
+
+    function getSystemPreference() {
+        return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+
+    function resolveTheme(theme) {
+        return theme === 'system' ? getSystemPreference() : theme;
+    }
+
+    function applyTheme(theme) {
+        const resolved = resolveTheme(theme);
+        const root = document.documentElement;
+        root.classList.remove('dark', 'light');
+        root.classList.add(resolved);
+
+        const btn = document.getElementById('theme-toggle-btn');
+        if (btn) {
+            btn.textContent = THEME_ICONS[theme] || '\u25D1';
+            btn.title = THEME_TITLES[theme] || 'Toggle theme';
+        }
+
+        try { localStorage.setItem(THEME_KEY, theme); } catch(e) {}
+
+        // Guard against TDZ — plotInitialized is declared later in the script
+        try { if (plotInitialized) applyFilters(); } catch(e) {}
+    }
+
+    function cycleTheme() {
+        let current;
+        try { current = localStorage.getItem(THEME_KEY) || 'system'; } catch(e) { current = 'system'; }
+        const idx = THEME_CYCLE.indexOf(current);
+        const next = THEME_CYCLE[(idx + 1) % THEME_CYCLE.length];
+        applyTheme(next);
+    }
+
+    // Listen for OS theme changes when in system mode
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+        let current;
+        try { current = localStorage.getItem(THEME_KEY) || 'system'; } catch(e) { current = 'system'; }
+        if (current === 'system') applyTheme('system');
+    });
+
+    // Initialize theme immediately (before Plotly renders)
+    (function initTheme() {
+        let saved;
+        try { saved = localStorage.getItem(THEME_KEY); } catch(e) {}
+        applyTheme(saved || 'system');
+    })();
+
+    /* ——————————————————————————————————————————
+       Short cluster labels — official HS chapter
+       names are absurdly long; map to readable labels
+       —————————————————————————————————————————— */
+    const CHAPTER_SHORT_NAMES = {
+        'Animals; live': 'Live Animals',
+        'Meat and edible meat offal': 'Meat',
+        'Fish and crustaceans, molluscs and other aquatic invertebrates': 'Fish & Seafood',
+        "Dairy produce; birds' eggs; natural honey; edible products of animal origin, not elsewhere specified or included": 'Dairy & Eggs',
+        'Animal originated products; not elsewhere specified or included': 'Animal Products',
+        'Trees and other plants, live; bulbs, roots and the like; cut flowers and ornamental foliage': 'Live Plants',
+        'Vegetables and certain roots and tubers; edible': 'Vegetables',
+        'Fruit and nuts, edible; peel of citrus fruit or melons': 'Fruit & Nuts',
+        'Coffee, tea, mate and spices': 'Coffee & Tea',
+        'Cereals': 'Cereals',
+        'Products of the milling industry; malt, starches, inulin, wheat gluten': 'Milling & Starch',
+        'Oil seeds and oleaginous fruits; miscellaneous grains, seeds and fruit, industrial or medicinal plants; straw and fodder': 'Oil Seeds',
+        'Lac; gums, resins and other vegetable saps and extracts': 'Gums & Resins',
+        'Vegetable plaiting materials; vegetable products not elsewhere specified or included': 'Plaiting Materials',
+        'Animal, vegetable or microbial fats and oils and their cleavage products; prepared edible fats; animal or vegetable waxes': 'Fats & Oils',
+        'Meat, fish, crustaceans, molluscs or other aquatic invertebrates, or insects; preparations thereof': 'Prepared Meats',
+        'Sugars and sugar confectionery': 'Sugar',
+        'Cocoa and cocoa preparations': 'Cocoa',
+        "Preparations of cereals, flour, starch or milk; pastrycooks' products": 'Cereal Preps',
+        'Preparations of vegetables, fruit, nuts or other parts of plants': 'Preserved Foods',
+        'Miscellaneous edible preparations': 'Edible Preps',
+        'Beverages, spirits and vinegar': 'Beverages',
+        'Food industries, residues and wastes thereof; prepared animal fodder': 'Animal Feed',
+        'Tobacco and manufactured tobacco substitutes; products, whether or not containing nicotine, intended for inhalation without combustion; other nicotine containing products intended for the intake of nicotine into the human body': 'Tobacco',
+        'Salt; sulphur; earths, stone; plastering materials, lime and cement': 'Salt & Minerals',
+        'Ores, slag and ash': 'Ores & Slag',
+        'Mineral fuels, mineral oils and products of their distillation; bituminous substances; mineral waxes': 'Mineral Fuels',
+        'Inorganic chemicals; organic and inorganic compounds of precious metals; of rare earth metals, of radio-active elements and of isotopes': 'Inorganic Chem.',
+        'Organic chemicals': 'Organic Chem.',
+        'Pharmaceutical products': 'Pharma',
+        'Fertilizers': 'Fertilizers',
+        'Tanning or dyeing extracts; tannins and their derivatives; dyes, pigments and other colouring matter; paints, varnishes; putty, other mastics; inks': 'Dyes & Paints',
+        'Essential oils and resinoids; perfumery, cosmetic or toilet preparations': 'Cosmetics',
+        'Soap, organic surface-active agents; washing, lubricating, polishing or scouring preparations; artificial or prepared waxes, candles and similar articles, modelling pastes, dental waxes and dental preparations with a basis of plaster': 'Soap & Waxes',
+        'Albuminoidal substances; modified starches; glues; enzymes': 'Glues & Enzymes',
+        'Explosives; pyrotechnic products; matches; pyrophoric alloys; certain combustible preparations': 'Explosives',
+        'Photographic or cinematographic goods': 'Photo Goods',
+        'Chemical products n.e.c.': 'Chemicals n.e.c.',
+        'Plastics and articles thereof': 'Plastics',
+        'Rubber and articles thereof': 'Rubber',
+        'Raw hides and skins (other than furskins) and leather': 'Hides & Leather',
+        'Articles of leather; saddlery and harness; travel goods, handbags and similar containers; articles of animal gut (other than silk-worm gut)': 'Leather Goods',
+        'Furskins and artificial fur; manufactures thereof': 'Furskins',
+        'Wood and articles of wood; wood charcoal': 'Wood',
+        'Cork and articles of cork': 'Cork',
+        'Manufactures of straw, esparto or other plaiting materials; basketware and wickerwork': 'Basketware',
+        'Pulp of wood or other fibrous cellulosic material; recovered (waste and scrap) paper or paperboard': 'Wood Pulp',
+        'Paper and paperboard; articles of paper pulp, of paper or paperboard': 'Paper',
+        'Printed books, newspapers, pictures and other products of the printing industry; manuscripts, typescripts and plans': 'Books & Print',
+        'Silk': 'Silk',
+        'Wool, fine or coarse animal hair; horsehair yarn and woven fabric': 'Wool',
+        'Cotton': 'Cotton',
+        'Vegetable textile fibres; paper yarn and woven fabrics of paper yarn': 'Vegetal Fibres',
+        'Man-made filaments; strip and the like of man-made textile materials': 'Synthetic Fibres',
+        'Man-made staple fibres': 'Staple Fibres',
+        'Wadding, felt and nonwovens, special yarns; twine, cordage, ropes and cables and articles thereof': 'Wadding & Rope',
+        'Carpets and other textile floor coverings': 'Carpets',
+        'Fabrics; special woven fabrics, tufted textile fabrics, lace, tapestries, trimmings, embroidery': 'Woven Fabrics',
+        'Textile fabrics; impregnated, coated, covered or laminated; textile articles of a kind suitable for industrial use': 'Tech. Textiles',
+        'Fabrics; knitted or crocheted': 'Knit Fabrics',
+        'Apparel and clothing accessories; knitted or crocheted': 'Knitwear',
+        'Apparel and clothing accessories; not knitted or crocheted': 'Apparel',
+        'Textiles, made up articles; sets; worn clothing and worn textile articles; rags': 'Textile Articles',
+        'Footwear; gaiters and the like; parts of such articles': 'Footwear',
+        'Headgear and parts thereof': 'Headgear',
+        'Umbrellas, sun umbrellas, walking-sticks, seat sticks, whips, riding crops; and parts thereof': 'Umbrellas',
+        'Feathers and down, prepared; and articles made of feather or of down; artificial flowers; articles of human hair': 'Feathers & Down',
+        'Stone, plaster, cement, asbestos, mica or similar materials; articles thereof': 'Stone & Cement',
+        'Ceramic products': 'Ceramics',
+        'Glass and glassware': 'Glass',
+        'Natural, cultured pearls; precious, semi-precious stones; precious metals, metals clad with precious metal, and articles thereof; imitation jewellery; coin': 'Gems & Jewellery',
+        'Iron and steel': 'Iron & Steel',
+        'Iron or steel articles': 'Steel Articles',
+        'Copper and articles thereof': 'Copper',
+        'Nickel and articles thereof': 'Nickel',
+        'Aluminium and articles thereof': 'Aluminium',
+        'Lead and articles thereof': 'Lead',
+        'Zinc and articles thereof': 'Zinc',
+        'Tin; articles thereof': 'Tin',
+        'Metals; n.e.c., cermets and articles thereof': 'Other Metals',
+        'Tools, implements, cutlery, spoons and forks, of base metal; parts thereof, of base metal': 'Tools & Cutlery',
+        'Metal; miscellaneous products of base metal': 'Metal Products',
+        'Machinery and mechanical appliances, boilers, nuclear reactors; parts thereof': 'Machinery',
+        'Electrical machinery and equipment and parts thereof; sound recorders and reproducers; television image and sound recorders and reproducers, parts and accessories of such articles': 'Electronics',
+        'Railway, tramway locomotives, rolling-stock and parts thereof; railway or tramway track fixtures and fittings and parts thereof; mechanical (including electro-mechanical) traffic signalling equipment of all kinds': 'Railways',
+        'Vehicles; other than railway or tramway rolling stock, and parts and accessories thereof': 'Vehicles',
+        'Aircraft, spacecraft, and parts thereof': 'Aircraft',
+        'Ships, boats and floating structures': 'Ships',
+        'Optical, photographic, cinematographic, measuring, checking, medical or surgical instruments and apparatus; parts and accessories': 'Instruments',
+        'Clocks and watches and parts thereof': 'Clocks & Watches',
+        'Musical instruments; parts and accessories of such articles': 'Musical Instr.',
+        'Arms and ammunition; parts and accessories thereof': 'Arms & Ammo',
+        'Furniture; bedding, mattresses, mattress supports, cushions and similar stuffed furnishings; lamps and lighting fittings, n.e.c.; illuminated signs, illuminated name-plates and the like; prefabricated buildings': 'Furniture',
+        'Toys, games and sports requisites; parts and accessories thereof': 'Toys & Games',
+        'Miscellaneous manufactured articles': 'Misc. Goods',
+        "Works of art; collectors' pieces and antiques": 'Art & Antiques',
+        'Commodities not specified according to kind': 'Special Items',
+    };
+
+    function shortLabel(chapter) {
+        if (CHAPTER_SHORT_NAMES[chapter]) return CHAPTER_SHORT_NAMES[chapter];
+        const short = chapter.split(';')[0].split(',')[0].trim();
+        return short.length > 20 ? short.slice(0, 18) + '\u2026' : short;
+    }
+
+    /* ——————————————————————————————————————————
        State
        —————————————————————————————————————————— */
     let plotInitialized = false;
@@ -1657,12 +1875,134 @@
     function buildCategoryColorMap(categories) {
         const map = {};
         categories.forEach((category, i) => {
-            map[category] = CHAPTER_COLORS[category] || CATEGORY_PALETTE[i % CATEGORY_PALETTE.length];
+            const short = shortLabel(category);
+            map[category] = CHAPTER_COLORS[short] || CHAPTER_COLORS[category] || CATEGORY_PALETTE[i % CATEGORY_PALETTE.length];
         });
         return map;
     }
 
+    // ── Module-scope helpers for cluster labels (used by renderPlot + background density fetch) ──
+    const MIN_CLUSTER_SIZE = 40;  // Only label clusters with 40+ points
+    const MAX_LABELS = 25;        // Cap total labels to prevent visual noise
+
+    // Compute geometric median (iterative Weiszfeld algorithm, 10 iterations)
+    function geoMedian(xs, ys) {
+        let mx = xs.reduce((a,b) => a+b, 0) / xs.length;
+        let my = ys.reduce((a,b) => a+b, 0) / ys.length;
+        for (let iter = 0; iter < 10; iter++) {
+            let wx = 0, wy = 0, wsum = 0;
+            for (let i = 0; i < xs.length; i++) {
+                const d = Math.sqrt((xs[i]-mx)**2 + (ys[i]-my)**2) || 1e-8;
+                const w = 1 / d;
+                wx += xs[i] * w; wy += ys[i] * w; wsum += w;
+            }
+            mx = wx / wsum; my = wy / wsum;
+        }
+        return [mx, my];
+    }
+
+    // Build annotation objects for cluster labels from chapter entries [{name, {x,y}}]
+    /* ——————————————————————————————————————————
+       Plotly theme colors — adapts to current theme
+       —————————————————————————————————————————— */
+    function getPlotTheme() {
+        const isDark = document.documentElement.classList.contains('dark');
+        if (isDark) {
+            return {
+                paper_bgcolor: '#0a0a0a',
+                plot_bgcolor: '#0a0a0a',
+                fontColor: 'rgba(255,255,255,0.3)',
+                axisTitleColor: 'rgba(255,255,255,0.2)',
+                gridColor: 'rgba(255,255,255,0.03)',
+                zerolineColor: 'rgba(255,255,255,0.05)',
+                tickFontColor: 'rgba(255,255,255,0.15)',
+                legendBg: 'rgba(10,10,10,0.9)',
+                legendBorder: 'rgba(255,255,255,0.05)',
+                legendFont: 'rgba(255,255,255,0.5)',
+                hoverBg: 'rgba(10,10,10,0.95)',
+                hoverBorder: 'rgba(255,255,255,0.1)',
+                hoverFont: '#ffffff',
+                annotationBg: 'rgba(10,10,10,0.6)',
+                annotationFallbackColor: 'rgba(255,255,255,0.5)',
+                densityColorscale: [[0, 'rgba(0,0,0,0)'], [0.2, 'rgba(59,130,246,0.05)'], [0.5, 'rgba(59,130,246,0.12)'], [1, 'rgba(59,130,246,0.25)']],
+                neighborLineColor: 'rgba(255,255,255,0.65)',
+                queryMarkerColor: '#ffffff',
+                queryTextColor: '#ffffff',
+            };
+        }
+        return {
+            paper_bgcolor: '#ffffff',
+            plot_bgcolor: '#ffffff',
+            fontColor: 'rgba(0,0,0,0.35)',
+            axisTitleColor: 'rgba(0,0,0,0.3)',
+            gridColor: 'rgba(0,0,0,0.05)',
+            zerolineColor: 'rgba(0,0,0,0.08)',
+            tickFontColor: 'rgba(0,0,0,0.25)',
+            legendBg: 'rgba(255,255,255,0.95)',
+            legendBorder: 'rgba(0,0,0,0.08)',
+            legendFont: 'rgba(0,0,0,0.5)',
+            hoverBg: 'rgba(255,255,255,0.97)',
+            hoverBorder: 'rgba(0,0,0,0.12)',
+            hoverFont: '#111111',
+            annotationBg: 'rgba(255,255,255,0.7)',
+            annotationFallbackColor: 'rgba(0,0,0,0.4)',
+            densityColorscale: [[0, 'rgba(0,0,0,0)'], [0.2, 'rgba(37,99,235,0.04)'], [0.5, 'rgba(37,99,235,0.08)'], [1, 'rgba(37,99,235,0.18)']],
+            neighborLineColor: 'rgba(0,0,0,0.5)',
+            queryMarkerColor: '#111111',
+            queryTextColor: '#111111',
+        };
+    }
+
+    function buildClusterAnnotations(chapterEntries) {
+        const theme = getPlotTheme();
+        const candidates = chapterEntries
+            .filter(([_, pts]) => pts.x.length >= MIN_CLUSTER_SIZE)
+            .sort((a, b) => b[1].x.length - a[1].x.length)
+            .slice(0, MAX_LABELS);
+
+        const annotations = candidates.map(([chapter, pts]) => {
+            const [cx, cy] = geoMedian(pts.x, pts.y);
+            return {
+                x: cx,
+                y: cy,
+                text: shortLabel(chapter),
+                showarrow: false,
+                font: {
+                    size: Math.min(12, 8 + Math.log2(pts.x.length)),
+                    color: categoryColorMap[chapter] || theme.annotationFallbackColor,
+                    family: "'Inter', sans-serif",
+                    weight: 'bold',
+                },
+                opacity: 0.55,
+                xanchor: 'center',
+                yanchor: 'middle',
+                bgcolor: theme.annotationBg,
+                borderpad: 2,
+            };
+        });
+
+        // Simple collision avoidance: nudge overlapping labels apart
+        const NUDGE_DIST = 1.5;
+        for (let i = 0; i < annotations.length; i++) {
+            for (let j = i + 1; j < annotations.length; j++) {
+                const dx = annotations[j].x - annotations[i].x;
+                const dy = annotations[j].y - annotations[i].y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                if (dist < NUDGE_DIST && dist > 0) {
+                    const push = (NUDGE_DIST - dist) / 2;
+                    const nx = (dx / dist) * push;
+                    const ny = (dy / dist) * push;
+                    annotations[i].x -= nx; annotations[i].y -= ny;
+                    annotations[j].x += nx; annotations[j].y += ny;
+                }
+            }
+        }
+        return annotations;
+    }
+
     function renderPlot(points) {
+        const theme = getPlotTheme();
+
         // Group by chapter
         const chapters = {};
         points.forEach(p => {
@@ -1673,14 +2013,28 @@
             chapters[p.category].customdata.push([p.hs_code, p.hs_desc, p.language, p.text, p.category]);
         });
 
+        // Density contour layer — renders behind scatter points
+        const densityTrace = is3D ? null : {
+            x: points.map(p => p.x),
+            y: points.map(p => p.y),
+            type: 'histogram2dcontour',
+            colorscale: theme.densityColorscale,
+            showscale: false,
+            hoverinfo: 'skip',
+            ncontours: 20,
+            contours: { showlines: false },
+            line: { width: 0 },
+            showlegend: false,
+        };
+
         const chapterEntries = Object.entries(chapters);
         const showLegend = chapterEntries.length <= 12;
-        const traces = chapterEntries.map(([chapter, pts]) => ({
+        const scatterTraces = chapterEntries.map(([chapter, pts]) => ({
             x: pts.x,
             y: pts.y,
             mode: 'markers',
             type: is3D ? 'scatter3d' : 'scattergl',
-            name: chapter,
+            name: shortLabel(chapter),
             showlegend: showLegend,
             marker: {
                 size: is3D ? 2.5 : (points.length > 20000 ? 2 : 4),
@@ -1698,73 +2052,9 @@
                 '<i>%{customdata[2]}</i>' +
                 '<extra>%{fullData.name}</extra>',
         }));
+        const traces = densityTrace ? [densityTrace, ...scatterTraces] : scatterTraces;
 
-        // Cluster labels — positioned at geometric median of each cluster
-        // Only label the top N largest clusters to avoid clutter, with collision avoidance
-        const MIN_CLUSTER_SIZE = 40;  // Only label clusters with 40+ points
-        const MAX_LABELS = 25;        // Cap total labels to prevent visual noise
-
-        // Sort by cluster size descending, take top N that meet minimum
-        const labelCandidates = chapterEntries
-            .filter(([_, pts]) => pts.x.length >= MIN_CLUSTER_SIZE)
-            .sort((a, b) => b[1].x.length - a[1].x.length)
-            .slice(0, MAX_LABELS);
-
-        // Compute geometric median (iterative Weiszfeld algorithm, 10 iterations)
-        function geoMedian(xs, ys) {
-            let mx = xs.reduce((a,b) => a+b, 0) / xs.length;
-            let my = ys.reduce((a,b) => a+b, 0) / ys.length;
-            for (let iter = 0; iter < 10; iter++) {
-                let wx = 0, wy = 0, wsum = 0;
-                for (let i = 0; i < xs.length; i++) {
-                    const d = Math.sqrt((xs[i]-mx)**2 + (ys[i]-my)**2) || 1e-8;
-                    const w = 1 / d;
-                    wx += xs[i] * w; wy += ys[i] * w; wsum += w;
-                }
-                mx = wx / wsum; my = wy / wsum;
-            }
-            return [mx, my];
-        }
-
-        // Place labels at geometric median with slight upward offset
-        const rawAnnotations = labelCandidates.map(([chapter, pts]) => {
-            const [cx, cy] = geoMedian(pts.x, pts.y);
-            return {
-                x: cx,
-                y: cy,
-                text: chapter.length > 20 ? chapter.slice(0, 18) + '…' : chapter,
-                showarrow: false,
-                font: {
-                    size: Math.min(12, 8 + Math.log2(pts.x.length)),
-                    color: categoryColorMap[chapter] || 'rgba(255,255,255,0.5)',
-                    family: "'Inter', sans-serif",
-                    weight: 'bold',
-                },
-                opacity: 0.55,
-                xanchor: 'center',
-                yanchor: 'middle',
-                bgcolor: 'rgba(10,10,10,0.6)',
-                borderpad: 2,
-            };
-        });
-
-        // Simple collision avoidance: nudge overlapping labels apart
-        const NUDGE_DIST = 1.5;
-        for (let i = 0; i < rawAnnotations.length; i++) {
-            for (let j = i + 1; j < rawAnnotations.length; j++) {
-                const dx = rawAnnotations[j].x - rawAnnotations[i].x;
-                const dy = rawAnnotations[j].y - rawAnnotations[i].y;
-                const dist = Math.sqrt(dx*dx + dy*dy);
-                if (dist < NUDGE_DIST && dist > 0) {
-                    const push = (NUDGE_DIST - dist) / 2;
-                    const nx = (dx / dist) * push;
-                    const ny = (dy / dist) * push;
-                    rawAnnotations[i].x -= nx; rawAnnotations[i].y -= ny;
-                    rawAnnotations[j].x += nx; rawAnnotations[j].y += ny;
-                }
-            }
-        }
-        const annotations = rawAnnotations;
+        const annotations = buildClusterAnnotations(chapterEntries);
 
         // Update point count badge
         const countBadge = document.getElementById('point-count');
@@ -1777,33 +2067,33 @@
         }
 
         const layout = {
-            paper_bgcolor: '#0a0a0a',
-            plot_bgcolor: '#0a0a0a',
+            paper_bgcolor: theme.paper_bgcolor,
+            plot_bgcolor: theme.plot_bgcolor,
             showlegend: showLegend,
             annotations: annotations,
             font: {
-                color: 'rgba(255,255,255,0.3)',
+                color: theme.fontColor,
                 family: "'Inter', sans-serif",
                 size: 11,
             },
             margin: { t: 8, r: 8, b: 36, l: 36 },
             xaxis: {
-                title: { text: 'UMAP 1', font: { size: 10, color: 'rgba(255,255,255,0.2)' } },
-                gridcolor: 'rgba(255,255,255,0.03)',
-                zerolinecolor: 'rgba(255,255,255,0.05)',
-                tickfont: { size: 9, color: 'rgba(255,255,255,0.15)' },
+                title: { text: 'UMAP 1', font: { size: 10, color: theme.axisTitleColor } },
+                gridcolor: theme.gridColor,
+                zerolinecolor: theme.zerolineColor,
+                tickfont: { size: 9, color: theme.tickFontColor },
             },
             yaxis: {
-                title: { text: 'UMAP 2', font: { size: 10, color: 'rgba(255,255,255,0.2)' } },
-                gridcolor: 'rgba(255,255,255,0.03)',
-                zerolinecolor: 'rgba(255,255,255,0.05)',
-                tickfont: { size: 9, color: 'rgba(255,255,255,0.15)' },
+                title: { text: 'UMAP 2', font: { size: 10, color: theme.axisTitleColor } },
+                gridcolor: theme.gridColor,
+                zerolinecolor: theme.zerolineColor,
+                tickfont: { size: 9, color: theme.tickFontColor },
             },
             legend: {
-                bgcolor: 'rgba(10,10,10,0.9)',
-                bordercolor: 'rgba(255,255,255,0.05)',
+                bgcolor: theme.legendBg,
+                bordercolor: theme.legendBorder,
                 borderwidth: 1,
-                font: { size: 9, color: 'rgba(255,255,255,0.5)' },
+                font: { size: 9, color: theme.legendFont },
                 itemsizing: 'constant',
                 orientation: 'v',
                 x: 1,
@@ -1812,9 +2102,9 @@
             },
             hovermode: 'closest',
             hoverlabel: {
-                bgcolor: 'rgba(10,10,10,0.95)',
-                bordercolor: 'rgba(255,255,255,0.1)',
-                font: { family: "'Inter', sans-serif", size: 11, color: '#ffffff' },
+                bgcolor: theme.hoverBg,
+                bordercolor: theme.hoverBorder,
+                font: { family: "'Inter', sans-serif", size: 11, color: theme.hoverFont },
             },
             dragmode: 'pan',
         };
@@ -1831,6 +2121,29 @@
         plotInitialized = true;
         queryOverlayTraceCount = 0;
         renderLatentDistancePanel(null);
+
+        // Background fetch: upgrade density contour + cluster labels with full dataset
+        if (!is3D && densityTrace) {
+            fetch('/visualization-density')
+                .then(r => r.json())
+                .then(full => {
+                    if (full.error || !full.chapters) return;
+
+                    // Flatten all x,y for density trace (trace index 0)
+                    const allX = [], allY = [];
+                    Object.values(full.chapters).forEach(ch => {
+                        allX.push(...ch.x);
+                        allY.push(...ch.y);
+                    });
+                    Plotly.restyle('umap-plot', { x: [allX], y: [allY] }, [0]);
+
+                    // Recompute cluster labels from full data
+                    const fullEntries = Object.entries(full.chapters);
+                    const newAnnotations = buildClusterAnnotations(fullEntries);
+                    Plotly.relayout('umap-plot', { annotations: newAnnotations });
+                })
+                .catch(() => {}); // Silent fail — sampled data still works
+        }
 
         // Click handler for points
         const plotEl = document.getElementById('umap-plot');
@@ -1889,7 +2202,7 @@
             const text = escapeHtml((n.text || '').substring(0, 60));
             const barColor = similarity > 0.8 ? 'var(--h-emerald)' : similarity > 0.5 ? 'var(--h-amber)' : 'var(--h-red)';
             return `
-                <div style="padding:0.35rem 0;border-top:1px solid rgba(255,255,255,0.03);${i === 0 ? 'border-top:none;' : ''}">
+                <div style="padding:0.35rem 0;border-top:1px solid var(--h-border);${i === 0 ? 'border-top:none;' : ''}">
                     <div class="latent-distance-row" style="margin-bottom:0.15rem;">
                         <span class="latent-distance-rank">${i + 1}</span>
                         <span class="latent-distance-code">${escapeHtml(hsCode)}${topMarker}</span>
@@ -1897,7 +2210,7 @@
                         <span class="latent-distance-dist">d ${distanceVal}</span>
                     </div>
                     <div style="margin-left:20px;">
-                        <div style="height:3px;background:rgba(255,255,255,0.05);border-radius:2px;margin-bottom:0.2rem;">
+                        <div style="height:3px;background:var(--h-bg-hover);border-radius:2px;margin-bottom:0.2rem;">
                             <div style="height:100%;width:${similarityPct}%;background:${barColor};border-radius:2px;transition:width 0.4s ease;"></div>
                         </div>
                         <div style="font-size:0.5625rem;color:var(--h-text-4);line-height:1.3;">
@@ -2028,6 +2341,7 @@
         if (!plotInitialized) return;
 
         try {
+            const hlTheme = getPlotTheme();
             const response = await fetch('/embed-query', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -2054,7 +2368,7 @@
                     ],
                     cmin: 0,
                     cmax: 1,
-                    line: { width: 1, color: 'rgba(255,255,255,0.65)' },
+                    line: { width: 1, color: hlTheme.neighborLineColor },
                     opacity: 0.95,
                 },
                 customdata: neighbors.map(n => [
@@ -2080,13 +2394,13 @@
                 name: 'Your query',
                 marker: {
                     size: 14,
-                    color: '#ffffff',
+                    color: hlTheme.queryMarkerColor,
                     symbol: 'diamond',
                     line: { width: 2, color: 'var(--h-accent)' }
                 },
                 text: ['Query'],
                 textposition: 'top center',
-                textfont: { color: '#ffffff', size: 10, family: "'Inter', sans-serif" },
+                textfont: { color: hlTheme.queryTextColor, size: 10, family: "'Inter', sans-serif" },
                 hovertemplate: '<b>Your Query</b><br>' + text.substring(0, 60) + '<extra></extra>',
                 showlegend: true,
             };
@@ -2108,23 +2422,64 @@
 
             clearQueryOverlay();
 
-            Plotly.addTraces('umap-plot', [...connectorTraces, neighborTrace, queryTrace]);
+            // Get current plot center for animation start
+            const plotEl = document.getElementById('umap-plot');
+            const xRange = plotEl.layout.xaxis.range;
+            const yRange = plotEl.layout.yaxis.range;
+            const centerX = (xRange[0] + xRange[1]) / 2;
+            const centerY = (yRange[0] + yRange[1]) / 2;
+
+            // Start all traces at plot center (collapsed)
+            const startConnectors = connectorTraces.map(t => ({
+                ...t,
+                x: [centerX, centerX],
+                y: [centerY, centerY],
+            }));
+            const startNeighbor = {
+                ...neighborTrace,
+                x: neighbors.map(() => centerX),
+                y: neighbors.map(() => centerY),
+            };
+            const startQuery = {
+                ...queryTrace,
+                x: [centerX],
+                y: [centerY],
+            };
+
+            Plotly.addTraces('umap-plot', [...startConnectors, startNeighbor, startQuery]);
             queryOverlayTraceCount = connectorTraces.length + 2;
             renderLatentDistancePanel({
                 neighbors,
                 predictions: resultData && resultData.predictions ? resultData.predictions : [],
             });
 
-            // Smooth zoom to query area
+            // Build animation frame: move everything to real positions + zoom
+            const totalTraces = (plotEl.data || []).length;
+            const firstNewIdx = totalTraces - queryOverlayTraceCount;
+            const traceIndices = [];
+            for (let i = firstNewIdx; i < totalTraces; i++) traceIndices.push(i);
+
+            const animData = [];
+            // Connector traces (fan out from query to neighbors)
+            connectorTraces.forEach(t => {
+                animData.push({ x: t.x, y: t.y });
+            });
+            // Neighbor markers
+            animData.push({ x: neighborTrace.x, y: neighborTrace.y });
+            // Query diamond
+            animData.push({ x: queryTrace.x, y: queryTrace.y });
+
             const padding = 3;
             Plotly.animate('umap-plot', {
+                data: animData,
+                traces: traceIndices,
                 layout: {
                     'xaxis.range': [data.x - padding, data.x + padding],
                     'yaxis.range': [data.y - padding, data.y + padding],
                 }
             }, {
-                transition: { duration: 500, easing: 'cubic-in-out' },
-                frame: { duration: 500 },
+                transition: { duration: 600, easing: 'cubic-in-out' },
+                frame: { duration: 600 },
             });
 
         } catch (error) {

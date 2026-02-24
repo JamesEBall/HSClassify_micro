@@ -593,6 +593,29 @@ async def get_visualization_data(request: Request):
     return JSONResponse({"points": points, "total": total})
 
 
+@app.get("/visualization-density")
+async def get_visualization_density():
+    """All UMAP points in compact columnar format for density/labels."""
+    points = umap_data or []
+    if not points:
+        cache_path = MODEL_DIR / "umap_data.json"
+        if cache_path.exists():
+            with open(cache_path, encoding="utf-8") as f:
+                points = json.load(f)
+    if not points:
+        return JSONResponse({"error": "No data"})
+
+    by_chapter: dict[str, dict[str, list]] = {}
+    for p in points:
+        ch = p.get("chapter_name", "Unknown")
+        if ch not in by_chapter:
+            by_chapter[ch] = {"x": [], "y": []}
+        by_chapter[ch]["x"].append(round(p["x"], 3))
+        by_chapter[ch]["y"].append(round(p["y"], 3))
+
+    return JSONResponse({"chapters": by_chapter})
+
+
 @app.post("/embed-query")
 async def embed_query(request: Request):
     """Get UMAP coordinates for a query."""
