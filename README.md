@@ -27,6 +27,10 @@ This project includes HS nomenclature content sourced from:
   - WCO HS nomenclature documentation
   - UN Comtrade data extraction API
 
+Related datasets (evaluated during development):
+
+- [Customs-Declaration-Datasets](https://github.com/Seondong/Customs-Declaration-Datasets) — 54,000 synthetic customs declaration records derived from 24.7M real Korean customs entries. Provides structured trade metadata (HS codes, country of origin, price, weight, fraud labels) but does not include free-text product descriptions. Cited as a reference for customs data research. See: *S. Kim et al., "DATE: Dual Attentive Tree-aware Embedding for Customs Fraud Detection," KDD 2020.*
+
 Licensing:
 
 - Upstream HS source data: **ODC Public Domain Dedication and License (PDDL) v1.0**

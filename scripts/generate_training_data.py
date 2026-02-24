@@ -951,72 +951,178 @@ CHINESE_TEMPLATES = {
 
 # Generic templates for codes without specific multilingual translations
 def generate_generic_descriptions(hs_code, info, count=10):
-    """Generate generic product descriptions for any HS code."""
+    """Generate diverse product descriptions for any HS code.
+
+    Produces text that varies structurally so the model learns semantic
+    meaning rather than memorising a fixed wrapper around the HS description.
+    """
     desc = info["desc"]
+    dl = desc.lower()
     chapter = info["chapter"]
-    
-    templates = [
+    rng = random.Random(f"generic-{hs_code}")
+
+    origins = ["China", "Germany", "USA", "Japan", "India", "Brazil",
+               "South Korea", "Italy", "Thailand", "Vietnam", "Mexico"]
+    quantities = ["500 units", "20 MT", "1 container", "200 cartons",
+                  "5,000 pieces", "50 pallets", "12,000 kg", "3 lots"]
+    buyers = ["retail chain", "wholesale distributor", "manufacturing plant",
+              "construction company", "hospital supply dept", "hotel group"]
+
+    # Structural variety: different sentence patterns, word order, detail
+    pool = [
         f"{desc}, commercial grade, for import",
-        f"{desc} - standard quality, bulk shipment",
-        f"{desc}, packed for international trade",
-        f"Shipment of {desc.lower()}, FOB terms",
+        f"Bulk shipment of {dl}, standard quality",
+        f"{dl}, packed for international trade",
+        f"Shipment of {dl}, FOB terms",
         f"{desc}, meeting international standards",
-        f"Imported {desc.lower()}, customs declaration",
-        f"{desc}, quantity: various, for wholesale",
-        f"Export grade {desc.lower()}, certified",
-        f"{desc} for industrial/commercial use",
-        f"Trade declaration: {desc.lower()}, new",
-        f"{desc}, duty-free zone import",
-        f"Consignment of {desc.lower()}, inspected",
-        f"{desc}, origin: various countries",
-        f"Wholesale lot of {desc.lower()}",
-        f"{desc}, packaged per trade requirements",
+        f"Imported {dl}, customs declaration",
+        f"Export grade {dl}, certified",
+        f"{dl} for industrial/commercial use",
+        f"Wholesale lot of {dl}",
+        # Origin-specific
+        f"{dl}, origin {rng.choice(origins)}, {rng.choice(quantities)}",
+        f"Imported from {rng.choice(origins)}: {dl}",
+        f"{rng.choice(origins)}-made {dl}, new, unused",
+        # Buyer-specific
+        f"{dl}, ordered by {rng.choice(buyers)}",
+        f"Supply of {dl} for {rng.choice(buyers)}",
+        # Quantity/packaging focused
+        f"{rng.choice(quantities)} of {dl}, ready for dispatch",
+        f"{dl}, {rng.choice(quantities)}, shrink-wrapped",
+        # Short invoice-style (no "HS description" echo)
+        f"PO-{rng.randint(10000,99999)}: {dl}",
+        f"Invoice line: {dl}, new goods",
+        f"Commercial invoice — {dl}, {rng.choice(quantities)}",
+        # Paraphrased / truncated descriptions
+        f"{dl.split(',')[0].strip()}, new, for sale",
+        f"Goods: {dl.split(',')[0].strip()}, general trade",
     ]
-    return templates[:count]
+    rng.shuffle(pool)
+    return pool[:count]
 
 
 def augment_records(records, multiplier=3):
-    """Expand dataset size by adding deterministic trade-context variants."""
+    """Expand dataset size by adding deterministic trade-context variants.
+
+    IMPORTANT: Only appends context suffixes in the SAME language as the
+    original record to avoid code-switching (e.g. Thai text with English
+    suffixes), which causes embeddings to cluster by language instead of
+    by HS concept.
+    """
     if multiplier <= 1:
         return records
 
-    trade_context = [
-        "for international wholesale distribution",
-        "for customs clearance and import declaration",
-        "for regional retail supply chain",
-        "for industrial procurement contract",
-        "for export under standard commercial terms",
-        "for bonded warehouse delivery",
-        "for cross-border shipment",
-        "for bulk procurement program",
-    ]
-    shipment_context = [
-        "packed in cartons",
-        "palletized for container shipment",
-        "shipping term CIF",
-        "shipping term FOB",
-        "with standard commercial invoice and packing list",
-        "for 20ft container loading",
-        "for mixed-lot cargo",
-        "for scheduled maritime transport",
-    ]
+    # Per-language trade context so augmented text stays monolingual
+    _trade_context = {
+        "en": [
+            "for international wholesale distribution",
+            "for customs clearance and import declaration",
+            "for regional retail supply chain",
+            "for industrial procurement contract",
+            "for export under standard commercial terms",
+            "for bonded warehouse delivery",
+            "for cross-border shipment",
+            "for bulk procurement program",
+        ],
+        "th": [
+            "สำหรับการจัดจำหน่ายขายส่งระหว่างประเทศ",
+            "สำหรับการตรวจปล่อยศุลกากร",
+            "สำหรับห่วงโซ่อุปทานค้าปลีกในภูมิภาค",
+            "สำหรับสัญญาจัดซื้อจัดจ้างอุตสาหกรรม",
+            "สำหรับการส่งออกตามเงื่อนไขการค้ามาตรฐาน",
+            "สำหรับการจัดส่งไปยังคลังสินค้าทัณฑ์บน",
+            "สำหรับการขนส่งข้ามพรมแดน",
+            "สำหรับโครงการจัดซื้อจำนวนมาก",
+        ],
+        "vi": [
+            "để phân phối bán buôn quốc tế",
+            "để thông quan và khai báo nhập khẩu",
+            "cho chuỗi cung ứng bán lẻ khu vực",
+            "cho hợp đồng mua sắm công nghiệp",
+            "để xuất khẩu theo điều kiện thương mại tiêu chuẩn",
+            "giao tại kho ngoại quan",
+            "cho vận chuyển xuyên biên giới",
+            "cho chương trình mua sắm số lượng lớn",
+        ],
+        "zh": [
+            "用于国际批发分销",
+            "用于清关和进口申报",
+            "用于区域零售供应链",
+            "用于工业采购合同",
+            "按标准商业条件出口",
+            "交付至保税仓库",
+            "用于跨境运输",
+            "用于大宗采购项目",
+        ],
+    }
+    _shipment_context = {
+        "en": [
+            "packed in cartons",
+            "palletized for container shipment",
+            "shipping term CIF",
+            "shipping term FOB",
+            "with standard commercial invoice and packing list",
+            "for 20ft container loading",
+            "for mixed-lot cargo",
+            "for scheduled maritime transport",
+        ],
+        "th": [
+            "บรรจุในกล่องลัง",
+            "วางบนพาเลทสำหรับตู้คอนเทนเนอร์",
+            "เงื่อนไขการขนส่ง CIF",
+            "เงื่อนไขการขนส่ง FOB",
+            "พร้อมใบกำกับสินค้าและบัญชีบรรจุหีบห่อ",
+            "สำหรับบรรจุตู้คอนเทนเนอร์ 20 ฟุต",
+            "สำหรับสินค้ารวมหลายรายการ",
+            "สำหรับการขนส่งทางทะเลตามกำหนด",
+        ],
+        "vi": [
+            "đóng trong thùng carton",
+            "xếp trên pallet cho vận chuyển container",
+            "điều kiện giao hàng CIF",
+            "điều kiện giao hàng FOB",
+            "kèm hóa đơn thương mại và phiếu đóng gói",
+            "xếp container 20 feet",
+            "hàng lô hỗn hợp",
+            "vận tải đường biển theo lịch",
+        ],
+        "zh": [
+            "纸箱包装",
+            "托盘装集装箱运输",
+            "运输条款 CIF",
+            "运输条款 FOB",
+            "附标准商业发票及装箱单",
+            "装20尺集装箱",
+            "混合批次货物",
+            "按计划海运",
+        ],
+    }
+
+    # Separators differ by script
+    _sep = {"en": ", ", "th": " ", "vi": ", ", "zh": "，"}
 
     expanded = []
     seen = set()
 
     for row in records:
         base_text = row["text"].strip()
-        key = (row["hs_code"], row["language"], base_text)
+        lang = row["language"]
+        key = (row["hs_code"], lang, base_text)
         if key not in seen:
             expanded.append(row)
             seen.add(key)
 
+        # Fall back to English context only for languages we don't cover yet
+        tc = _trade_context.get(lang, _trade_context["en"])
+        sc = _shipment_context.get(lang, _shipment_context["en"])
+        sep = _sep.get(lang, ", ")
+
         for i in range(multiplier - 1):
-            rnd = random.Random(f"{row['hs_code']}|{row['language']}|{base_text}|{i}")
-            v1 = trade_context[rnd.randrange(len(trade_context))]
-            v2 = shipment_context[rnd.randrange(len(shipment_context))]
-            variant = f"{base_text}, {v1}, {v2}."
-            variant_key = (row["hs_code"], row["language"], variant)
+            rnd = random.Random(f"{row['hs_code']}|{lang}|{base_text}|{i}")
+            v1 = tc[rnd.randrange(len(tc))]
+            v2 = sc[rnd.randrange(len(sc))]
+            variant = f"{base_text}{sep}{v1}{sep}{v2}"
+            variant_key = (row["hs_code"], lang, variant)
             if variant_key in seen:
                 continue
             new_row = dict(row)
@@ -1082,7 +1188,13 @@ OFFICIAL_CHAPTER_LABELS = load_official_chapter_labels()
 
 
 def make_record(text, hs_code, chapter_name, hs_desc, language):
-    """Create a normalized training row with human chapter label + chapter code."""
+    """Create a normalized training row with human chapter label + chapter code.
+
+    Both ``hs_chapter`` and ``hs_chapter_name`` are set to the official HS
+    nomenclature label (when available) to ensure consistency across the
+    dataset.  The caller's ``chapter_name`` is used only as a fallback for
+    codes absent from the official nomenclature.
+    """
     hs_code = str(hs_code).zfill(6)
     chapter_2 = hs_code[:2]
     chapter_code = f"HS {chapter_2}"
@@ -1092,7 +1204,7 @@ def make_record(text, hs_code, chapter_name, hs_desc, language):
         "hs_code": hs_code,
         "hs_chapter": human_label,
         "hs_chapter_code": chapter_code,
-        "hs_chapter_name": chapter_name,
+        "hs_chapter_name": human_label,
         "hs_desc": hs_desc,
         "language": language,
     }
@@ -1246,8 +1358,27 @@ def _realistic_product_text(desc, hs_code, rng):
 
     # Ch 50-63  Textiles / apparel
     if chapter <= 63:
-        fabrics = ["100% cotton", "65/35 polyester-cotton", "100% polyester",
-                   "organic cotton", "linen blend", "silk", "merino wool"]
+        import re as _re_tx
+        # Match fabric/material to HS description to avoid contradictions
+        _fabric_map = {
+            r"cotton": ["100% cotton", "organic cotton", "combed cotton", "Egyptian cotton"],
+            r"polyester": ["100% polyester", "recycled polyester", "polyester microfiber"],
+            r"silk": ["100% silk", "mulberry silk", "raw silk", "silk charmeuse"],
+            r"wool|hair|cashmere|alpaca": ["100% wool", "merino wool", "cashmere blend", "lambswool"],
+            r"linen|flax": ["100% linen", "linen blend", "Belgian linen", "French flax linen"],
+            r"nylon|polyamide": ["100% nylon", "nylon 6,6", "ripstop nylon", "ballistic nylon"],
+            r"jute": ["100% jute", "jute blend", "natural jute fibre"],
+            r"man.?made|synthetic|acrylic": ["acrylic blend", "100% acrylic", "modacrylic"],
+            r"viscose|rayon|modal": ["viscose rayon", "modal blend", "Tencel lyocell"],
+        }
+        fabrics = None
+        for pat, flist in _fabric_map.items():
+            if _re_tx.search(pat, dl, _re_tx.IGNORECASE):
+                fabrics = flist
+                break
+        if fabrics is None:
+            # Neutral fallback — don't claim a specific fibre content
+            fabrics = ["mixed fibres", "blended textile", "assorted composition"]
         brands = ["Nike", "Adidas", "Zara", "H&M", "Uniqlo", "Levi's",
                   "Ralph Lauren", "Calvin Klein", "Tommy Hilfiger", "GAP"]
         sizes = ["S/M/L/XL assorted", "one size", "EU 38-44 range", "US 6-12"]
@@ -1435,23 +1566,97 @@ def _realistic_product_text(desc, hs_code, rng):
 
     # Ch 86-89  Vehicles / aircraft / vessels
     if chapter <= 89:
+        import re as _re2
         if chapter == 87:
-            brands = ["Toyota Camry 2026", "Honda CR-V 2025", "Tesla Model Y LR",
-                      "BMW X5 xDrive40i", "Mercedes-Benz GLC 300", "Hyundai Tucson HEV",
-                      "Ford F-150 Lightning", "Volkswagen ID.4 Pro S",
-                      "BYD Seal 82kWh", "Kia EV6 GT-Line"]
+            _brand_map_87 = {
+                "tractor|semi.?trailer|road tractor": [
+                    "Scania R500 6x4", "Volvo FH 500", "MAN TGX 18.510",
+                    "DAF XG+ 480", "Kenworth T680", "Peterbilt 579"],
+                "motor car|sedan|passenger|1500.*3000|>3000|hybrid|electric.*car|electric.*vehicle": [
+                    "Toyota Camry 2026", "Honda CR-V 2025", "Tesla Model Y LR",
+                    "BMW X5 xDrive40i", "Mercedes-Benz GLC 300", "Hyundai Tucson HEV",
+                    "Ford F-150 Lightning", "Volkswagen ID.4 Pro S",
+                    "BYD Seal 82kWh", "Kia EV6 GT-Line"],
+                "bus|coach|public transport": [
+                    "Yutong ZK6128 coach", "BYD K9 electric bus",
+                    "Mercedes-Benz Citaro", "Volvo 9700 DD"],
+                "truck|lorry|van|cargo|goods.*vehicle": [
+                    "Isuzu N-Series NNR", "Hino 500 Series", "FUSO Canter",
+                    "Mercedes-Benz Actros", "Volvo FL Electric"],
+                "motorcycle|moped|cycle.*motor|50.*250": [
+                    "Honda Wave 125", "Yamaha YZF-R15 V4", "Kawasaki Ninja 250",
+                    "Suzuki GSX-R150", "Vespa Primavera 150"],
+                "bicycle|pedal|saddle|frame.*cycle": [
+                    "Shimano Dura-Ace groupset", "SRAM Red eTap AXS",
+                    "Trek Émonda SLR frameset", "Giant TCR Advanced Pro"],
+                "trailer|caravan|container": [
+                    "Schmitz Cargobull curtainsider", "Krone Cool Liner",
+                    "Kögel Cargo trailer", "Utility 3000R reefer trailer"],
+            }
+            matched = []
+            for pattern, blist in _brand_map_87.items():
+                if _re2.search(pattern, dl, _re2.IGNORECASE):
+                    matched = blist
+                    break
+            if not matched:
+                matched = ["Toyota", "Honda", "Hyundai", "Kia",
+                           "BMW", "Mercedes-Benz", "Volkswagen", "Ford"]
+            brand = rng.choice(matched)
         elif chapter == 88:
-            brands = ["Boeing 787-9 Dreamliner", "Airbus A350-900", "Embraer E195-E2",
-                      "DJI Matrice 350 RTK drone", "Cessna Citation CJ4 Gen2"]
+            _brand_map_88 = {
+                "aeroplane|airplane|aircraft.*2000|aircraft.*15000|unladen weight": [
+                    "Boeing 787-9 Dreamliner", "Airbus A350-900", "Embraer E195-E2",
+                    "Boeing 737 MAX 8", "Airbus A320neo"],
+                "helicopter|rotorcraft": [
+                    "Airbus H160", "Bell 505 Jet Ranger X",
+                    "Leonardo AW139", "Sikorsky S-76D"],
+                "unmanned|drone|UAV": [
+                    "DJI Matrice 350 RTK", "DJI Agras T40",
+                    "senseFly eBee X", "Wingtra WingtraOne GEN II"],
+                "glider|sailplane": [
+                    "Schempp-Hirth Discus-2", "Alexander Schleicher ASG 32"],
+                "simulator|training": [
+                    "CAE 7000XR full flight simulator",
+                    "L3Harris RealitySeven simulator"],
+            }
+            matched = []
+            for pattern, blist in _brand_map_88.items():
+                if _re2.search(pattern, dl, _re2.IGNORECASE):
+                    matched = blist
+                    break
+            if not matched:
+                matched = ["Boeing", "Airbus", "Embraer", "Bombardier", "DJI"]
+            brand = rng.choice(matched)
         else:
-            brands = ["Maersk container vessel", "bulk carrier 82,000 DWT",
-                      "Yamaha outboard motor 300HP", "Boston Whaler 280 Outrage"]
+            _brand_map_89 = {
+                "cargo|freight|container|bulk|tanker": [
+                    "Maersk 14,000 TEU container vessel", "bulk carrier 82,000 DWT",
+                    "VLCC crude tanker 320,000 DWT", "Panamax bulker 80,000 DWT"],
+                "yacht|pleasure|sail": [
+                    "Beneteau Oceanis 51.1", "Jeanneau Sun Odyssey 490",
+                    "Azimut Grande 27 Metri", "Ferretti Yachts 580"],
+                "fishing": [
+                    "Caterpillar Marine 3512C powered trawler",
+                    "Cummins QSK60 marine fishing vessel"],
+                "outboard|motor.*boat|engine.*marine": [
+                    "Yamaha F300 outboard", "Mercury Verado 400R",
+                    "Suzuki DF350A outboard"],
+            }
+            matched = []
+            for pattern, blist in _brand_map_89.items():
+                if _re2.search(pattern, dl, _re2.IGNORECASE):
+                    matched = blist
+                    break
+            if not matched:
+                matched = ["Maersk vessel", "bulk carrier 60,000 DWT",
+                           "Yamaha outboard motor 300HP", "Boston Whaler 280 Outrage"]
+            brand = rng.choice(matched)
         opts = [
-            f"{rng.choice(brands)}, {dl}, new, unregistered",
-            f"{dl}, {rng.choice(brands)}, for import and sale",
-            f"1 unit: {rng.choice(brands)}, {dl}",
-            f"{dl}, brand new {rng.choice(brands)}, with documentation",
-            f"Used {rng.choice(brands)}, {dl}, mileage 45,000 km",
+            f"{brand}, {dl}, new, unregistered",
+            f"{dl}, {brand}, for import and sale",
+            f"1 unit: {brand}, {dl}",
+            f"{dl}, brand new {brand}, with documentation",
+            f"Used {brand}, {dl}, mileage 45,000 km",
         ]
         return rng.choice(opts)
 
@@ -1564,30 +1769,103 @@ def add_official_hs_examples(data):
     return list(unique.values())
 
 
+def _multilingual_product_texts(desc, hs_code, rng):
+    """Generate short trade-style descriptions in Thai, Vietnamese, and Chinese.
+
+    Returns list of (text, language) tuples.  These intentionally use
+    native-language trade vocabulary so that the embedding space clusters
+    by HS concept rather than by language.
+    """
+    dl = desc.lower()
+    chapter = int(hs_code[:2])
+    results = []
+
+    # ── Thai ──────────────────────────────────────────────────────────
+    th_templates = [
+        f"สินค้านำเข้า: {dl} สำหรับจำหน่ายเชิงพาณิชย์",
+        f"{dl} คุณภาพส่งออก บรรจุหีบห่อมาตรฐาน",
+        f"ใบขนสินค้า: {dl} สินค้าใหม่ จำนวนตามใบสั่งซื้อ",
+    ]
+    # ── Vietnamese ────────────────────────────────────────────────────
+    vi_templates = [
+        f"Hàng nhập khẩu: {dl}, chất lượng thương mại",
+        f"{dl}, đóng gói theo tiêu chuẩn xuất khẩu",
+        f"Tờ khai hải quan: {dl}, hàng mới, số lượng theo đơn đặt hàng",
+    ]
+    # ── Chinese ───────────────────────────────────────────────────────
+    zh_templates = [
+        f"进口商品：{dl}，商业级，用于批发",
+        f"{dl}，出口品质，标准包装",
+        f"报关单：{dl}，新货，按订单数量",
+    ]
+
+    # Pick 2 variants per language (deterministic)
+    for templates, lang in [(th_templates, "th"), (vi_templates, "vi"), (zh_templates, "zh")]:
+        chosen = rng.sample(templates, min(2, len(templates)))
+        for t in chosen:
+            results.append((t, lang))
+
+    return results
+
+
+def add_multilingual_hs_examples(data):
+    """Add Thai/Vietnamese/Chinese examples for every official 6-digit HS code.
+
+    This ensures the embedding model sees every HS concept in multiple
+    languages, which prevents the UMAP latent space from clustering by
+    language instead of by HS code.
+    """
+    ml_variants = max(2, int(os.getenv("MULTILINGUAL_HS_VARIANTS", "2")))
+    rng = random.Random(99)
+
+    official_rows = load_official_hs_subheadings()
+    if not official_rows:
+        return data
+
+    # Count existing non-English examples per code per language
+    code_lang_counts = {}
+    for row in data:
+        if row["language"] != "en":
+            k = (row["hs_code"], row["language"])
+            code_lang_counts[k] = code_lang_counts.get(k, 0) + 1
+
+    for hs_code, desc in official_rows:
+        info = HS_CODES.get(hs_code, {"desc": desc, "chapter": f"HS {hs_code[:2]}"})
+        ml_texts = _multilingual_product_texts(desc, hs_code, rng)
+        for text, lang in ml_texts:
+            existing = code_lang_counts.get((hs_code, lang), 0)
+            if existing >= ml_variants:
+                continue
+            data.append(make_record(text, hs_code, info["chapter"], info["desc"], lang))
+            code_lang_counts[(hs_code, lang)] = existing + 1
+
+    return data
+
+
 def generate_dataset():
     """Generate the complete training dataset."""
     data = []
-    
+
     # Add English templates
     for hs_code, templates in ENGLISH_TEMPLATES.items():
         for text in templates:
             data.append(make_record(text, hs_code, HS_CODES[hs_code]["chapter"], HS_CODES[hs_code]["desc"], "en"))
-    
+
     # Add Thai templates
     for hs_code, templates in THAI_TEMPLATES.items():
         for text in templates:
             data.append(make_record(text, hs_code, HS_CODES[hs_code]["chapter"], HS_CODES[hs_code]["desc"], "th"))
-    
+
     # Add Vietnamese templates
     for hs_code, templates in VIETNAMESE_TEMPLATES.items():
         for text in templates:
             data.append(make_record(text, hs_code, HS_CODES[hs_code]["chapter"], HS_CODES[hs_code]["desc"], "vi"))
-    
+
     # Add Chinese templates
     for hs_code, templates in CHINESE_TEMPLATES.items():
         for text in templates:
             data.append(make_record(text, hs_code, HS_CODES[hs_code]["chapter"], HS_CODES[hs_code]["desc"], "zh"))
-    
+
     # Fill remaining HS codes with generic descriptions
     for hs_code, info in HS_CODES.items():
         if hs_code not in ENGLISH_TEMPLATES:
@@ -1597,7 +1875,10 @@ def generate_dataset():
 
     # Add official 6-digit HS subheadings from datasets/harmonized-system.
     data = add_official_hs_examples(data)
-    
+
+    # Add multilingual (th/vi/zh) examples for ALL official HS codes
+    data = add_multilingual_hs_examples(data)
+
     # Expand dataset with synthetic trade-context variants.
     # Keep default moderate for hosted startup time.
     multiplier = int(os.getenv("DATA_AUG_MULTIPLIER", "2"))
@@ -1607,7 +1888,7 @@ def generate_dataset():
     # Shuffle
     random.seed(42)
     random.shuffle(data)
-    
+
     return data
 
 
