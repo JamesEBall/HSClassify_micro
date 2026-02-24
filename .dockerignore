@@ -10,4 +10,3 @@ README.md
 LICENSE
 data/training_data.json
 data/sample_documents
-models/embeddings.npy
