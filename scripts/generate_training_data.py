@@ -1001,6 +1001,38 @@ def generate_generic_descriptions(hs_code, info, count=10):
     return pool[:count]
 
 
+def load_hf_real_data():
+    """Load real product descriptions from data/hf_real_data.csv.
+
+    Returns a list of dicts in the standard 7-column format.  Each row
+    also carries a ``source`` key (e.g. ``cbp_cross``, ``product_hscode``,
+    ``hscomp``) so that ``augment_records`` can skip augmentation for real
+    data.
+    """
+    csv_path = os.path.join(os.path.dirname(__file__), "..", "data", "hf_real_data.csv")
+    if not os.path.exists(csv_path):
+        print(f"  [load_hf_real_data] {csv_path} not found — skipping real data."
+              f"  Run scripts/fetch_hf_datasets.py first.")
+        return []
+
+    rows = []
+    with open(csv_path, "r", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        for row in reader:
+            rows.append({
+                "text": row["text"],
+                "hs_code": row["hs_code"],
+                "hs_chapter": row["hs_chapter"],
+                "hs_chapter_code": row["hs_chapter_code"],
+                "hs_chapter_name": row["hs_chapter_name"],
+                "hs_desc": row["hs_desc"],
+                "language": row["language"],
+                "source": row.get("source", "hf_real"),
+            })
+    print(f"  [load_hf_real_data] Loaded {len(rows)} real product descriptions")
+    return rows
+
+
 def augment_records(records, multiplier=3):
     """Expand dataset size by adding deterministic trade-context variants.
 
@@ -1008,6 +1040,9 @@ def augment_records(records, multiplier=3):
     original record to avoid code-switching (e.g. Thai text with English
     suffixes), which causes embeddings to cluster by language instead of
     by HS concept.
+
+    Records with a ``source`` key (i.e. real product descriptions from
+    external datasets) are kept as-is without augmentation.
     """
     if multiplier <= 1:
         return records
@@ -1111,6 +1146,10 @@ def augment_records(records, multiplier=3):
         if key not in seen:
             expanded.append(row)
             seen.add(key)
+
+        # Skip augmentation for real product descriptions from external datasets
+        if row.get("source"):
+            continue
 
         # Fall back to English context only for languages we don't cover yet
         tc = _trade_context.get(lang, _trade_context["en"])
@@ -1879,6 +1918,20 @@ def generate_dataset():
     # Add multilingual (th/vi/zh) examples for ALL official HS codes
     data = add_multilingual_hs_examples(data)
 
+    # Add real product descriptions from HF datasets (CBP CROSS, etc.)
+    hf_data = load_hf_real_data()
+    if hf_data:
+        # Deduplicate against existing data
+        existing_keys = set((row["text"].lower(), row["hs_code"]) for row in data)
+        added = 0
+        for row in hf_data:
+            key = (row["text"].lower(), row["hs_code"])
+            if key not in existing_keys:
+                data.append(row)
+                existing_keys.add(key)
+                added += 1
+        print(f"  Added {added} real product descriptions ({len(hf_data) - added} duplicates skipped)")
+
     # Expand dataset with synthetic trade-context variants.
     # Keep default moderate for hosted startup time.
     multiplier = int(os.getenv("DATA_AUG_MULTIPLIER", "2"))
@@ -1912,6 +1965,7 @@ def main():
                 "hs_desc",
                 "language",
             ],
+            extrasaction="ignore",
         )
         writer.writeheader()
         writer.writerows(data)

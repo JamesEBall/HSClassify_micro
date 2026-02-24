@@ -13,3 +13,4 @@ pytesseract==0.3.13
 pdf2image==1.17.0
 pillow==12.1.1
 python-multipart==0.0.22
+datasets==3.6.0
