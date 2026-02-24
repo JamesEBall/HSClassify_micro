@@ -19,6 +19,31 @@ jobs:
       - name: Pull LFS files
         run: git lfs pull
 
+      - name: Reset HF Space to clear accumulated LFS storage
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          pip install -q huggingface-hub
+          python3 << 'PYEOF'
+          import os
+          from huggingface_hub import HfApi
+          api = HfApi(token=os.environ["HF_TOKEN"])
+          repo_id = "Troglobyte/MicroHS"
+          try:
+              api.delete_repo(repo_id=repo_id, repo_type="space")
+              print(f"Deleted {repo_id} to clear LFS history")
+          except Exception as e:
+              print(f"No existing repo to delete: {e}")
+          api.create_repo(
+              repo_id=repo_id,
+              repo_type="space",
+              space_sdk="docker",
+              private=False,
+              exist_ok=True,
+          )
+          print(f"Created fresh {repo_id}")
+          PYEOF
+
       - name: Push to Hugging Face Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -72,12 +97,12 @@ jobs:
 
           # Remove files not needed at runtime to stay under HF Space 1GB limit
           rm -rf scripts/
+          rm -rf models/sentence_model/
           rm -f data/hts/hts_*.csv
           rm -f data/cargo_descriptions.csv
           rm -f data/training_data.json
           rm -f data/training_data_indexed.csv
           rm -f data/hf_real_data.csv
-          rm -f data/hs_codes_reference.json
 
           git add -A
           git commit -m "Sync from GitHub ${GITHUB_SHA}"
