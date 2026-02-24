@@ -12,6 +12,7 @@ Provides:
 """
 
 import csv
+import json
 import os
 import re
 from pathlib import Path
@@ -19,6 +20,7 @@ from typing import Optional
 
 PROJECT_DIR = Path(__file__).parent
 HS_DATA_PATH = PROJECT_DIR / "data" / "harmonized-system" / "harmonized-system.csv"
+US_HTS_LOOKUP_PATH = PROJECT_DIR / "data" / "hts" / "us_hts_lookup.json"
 
 
 class HSDataset:
@@ -191,38 +193,43 @@ class HSDataset:
 # HTS (Harmonized Tariff Schedule) adds country-specific digits (7-10) after the 6-digit HS code.
 # This is a simplified reference for major trading partners.
 
+def _load_us_hts_extensions() -> dict:
+    """Load US HTS extensions from the pre-built JSON lookup table."""
+    if not US_HTS_LOOKUP_PATH.exists():
+        return {}
+    with open(US_HTS_LOOKUP_PATH, "r", encoding="utf-8") as f:
+        raw = json.load(f)
+    # Convert from build_hts_lookup format to API format
+    extensions = {}
+    for hs6, entries in raw.items():
+        extensions[hs6] = [
+            {"hts": e["hts_code"], "description": e["description"],
+             "general_duty": e.get("general_duty", ""),
+             "special_duty": e.get("special_duty", ""),
+             "unit": e.get("unit", "")}
+            for e in entries
+        ]
+    return extensions
+
+
+# Lazy-loaded cache for US HTS data
+_us_hts_cache = None
+
+
+def _get_us_hts_extensions() -> dict:
+    global _us_hts_cache
+    if _us_hts_cache is None:
+        _us_hts_cache = _load_us_hts_extensions()
+    return _us_hts_cache
+
+
 HTS_EXTENSIONS = {
     "US": {
         "name": "United States HTS",
         "digits": 10,
         "format": "XXXX.XX.XXXX",
-        # Sample extensions for common codes
-        "extensions": {
-            "851712": [
-                {"hts": "8517120060", "description": "Smartphones, with screen size > 6 inches"},
-                {"hts": "8517120050", "description": "Smartphones, with screen size ≤ 6 inches"},
-                {"hts": "8517120090", "description": "Other telephones for cellular networks"},
-            ],
-            "847130": [
-                {"hts": "8471300100", "description": "Portable digital computers, weighing ≤ 10 kg, valued ≤ $1000"},
-                {"hts": "8471300150", "description": "Portable digital computers, weighing ≤ 10 kg, valued > $1000"},
-            ],
-            "870380": [
-                {"hts": "8703800010", "description": "Electric vehicles, new, passenger car, valued ≤ $40,000"},
-                {"hts": "8703800050", "description": "Electric vehicles, new, passenger car, valued > $40,000"},
-            ],
-            "610910": [
-                {"hts": "6109100012", "description": "T-shirts, cotton, men's, knitted, not ornamented"},
-                {"hts": "6109100014", "description": "T-shirts, cotton, men's, knitted, ornamented"},
-                {"hts": "6109100040", "description": "T-shirts, cotton, women's, knitted"},
-                {"hts": "6109100060", "description": "T-shirts, cotton, children's, knitted"},
-            ],
-            "100630": [
-                {"hts": "1006300010", "description": "Rice, semi-milled or wholly milled, long grain"},
-                {"hts": "1006300020", "description": "Rice, semi-milled or wholly milled, medium/short grain"},
-                {"hts": "1006300090", "description": "Rice, semi-milled or wholly milled, other"},
-            ],
-        }
+        # Extensions loaded lazily from us_hts_lookup.json
+        "extensions": None,  # Sentinel — resolved in get_hts_extensions()
     },
     "EU": {
         "name": "EU Combined Nomenclature (CN)",
@@ -294,7 +301,12 @@ def get_hts_extensions(hs_code: str, country_code: str) -> Optional[dict]:
         }
     
     tariff = HTS_EXTENSIONS[country_code]
-    extensions = tariff["extensions"].get(hs_code, [])
+    # US extensions are lazy-loaded from JSON
+    if country_code == "US":
+        ext_dict = _get_us_hts_extensions()
+    else:
+        ext_dict = tariff["extensions"]
+    extensions = ext_dict.get(hs_code, [])
     
     return {
         "available": True,

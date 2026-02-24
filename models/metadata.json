@@ -1,22 +1,22 @@
 {
-  "accuracy": 0.7017678708685626,
-  "n_examples": 6503,
+  "accuracy": 0.7721261444557477,
+  "n_examples": 9829,
   "n_codes": 118,
-  "n_chapters": 50,
+  "n_chapters": 99,
   "languages": [
     "en",
     "th",
-    "zh",
-    "vi"
+    "vi",
+    "zh"
   ],
   "label_space": "curated",
-  "n_examples_full_dataset": 141794,
-  "n_codes_full_dataset": 5621,
+  "n_examples_full_dataset": 314110,
+  "n_codes_full_dataset": 5916,
   "model_name": "intfloat/multilingual-e5-small",
   "embedding_dim": 384,
   "classifier": "KNN (k=5, cosine distance)",
   "report_summary": {
-    "weighted_f1": 0.699392507362192,
-    "macro_f1": 0.7586585215197706
+    "weighted_f1": 0.7702625126852769,
+    "macro_f1": 0.8106604634814989
   }
 }

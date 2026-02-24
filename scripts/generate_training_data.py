@@ -1932,6 +1932,23 @@ def generate_dataset():
                 added += 1
         print(f"  Added {added} real product descriptions ({len(hf_data) - added} duplicates skipped)")
 
+    # Add cargo descriptions generated from HTS data
+    cargo_csv = os.path.join(os.path.dirname(__file__), "..", "data", "cargo_descriptions.csv")
+    if os.path.exists(cargo_csv):
+        existing_keys = set((row["text"].lower(), row["hs_code"]) for row in data)
+        cargo_added = 0
+        with open(cargo_csv, "r", encoding="utf-8") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                key = (row["text"].lower(), row["hs_code"])
+                if key not in existing_keys:
+                    data.append(row)
+                    existing_keys.add(key)
+                    cargo_added += 1
+        print(f"  Added {cargo_added} cargo descriptions from HTS data")
+    else:
+        print("  Warning: data/cargo_descriptions.csv not found, skipping cargo descriptions")
+
     # Expand dataset with synthetic trade-context variants.
     # Keep default moderate for hosted startup time.
     multiplier = int(os.getenv("DATA_AUG_MULTIPLIER", "2"))
