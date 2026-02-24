@@ -59,10 +59,16 @@ jobs:
             rm -f README.frontmatter.md README.clean.md
           fi
 
+          # HF rejects files >10MB without Git LFS.
+          git lfs install
           git init
           git checkout -b main
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # Track large data files with LFS
+          git lfs track "data/*.csv" "data/*.json"
+          git add .gitattributes
           git add -A
           git commit -m "Sync from GitHub ${GITHUB_SHA}"
 
