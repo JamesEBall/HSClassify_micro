@@ -76,6 +76,7 @@ jobs:
           rm -rf scripts/
           rm -rf models/sentence_model/
           rm -f models/embeddings.npy models/knn_classifier.pkl models/label_encoder.pkl models/metadata.json
+          touch models/.gitkeep
           rm -f data/training_data.csv data/training_data_indexed.csv
           rm -f data/hts/hts_*.csv
           rm -f data/cargo_descriptions.csv
