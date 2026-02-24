@@ -138,7 +138,76 @@ def train_classifier(embeddings, labels, n_neighbors=5):
     return clf, le, accuracy, report, X_train, X_test, y_train, y_test
 
 
-def save_artifacts(model, clf, le, embeddings_all, train_df, full_df, accuracy, report):
+def finetune_model(model, df_train, epochs=2, batch_size=64, lr=2e-5, warmup=0.1):
+    """Fine-tune sentence model with contrastive loss on curated training pairs."""
+    from sentence_transformers import SentenceTransformerTrainer, SentenceTransformerTrainingArguments
+    from sentence_transformers.losses import MultipleNegativesRankingLoss
+    from datasets import Dataset
+    import tempfile
+
+    print(f"\n{'='*60}")
+    print("Fine-tuning embedding model (contrastive learning)")
+    print(f"{'='*60}")
+    print(f"  Epochs: {epochs}, Batch size: {batch_size}, LR: {lr}, Warmup: {warmup}")
+
+    # Build pairs: for each sample, pair with a random sample from the same HS code.
+    grouped = df_train.groupby("hs_code")["text"].apply(list).to_dict()
+    anchors, positives = [], []
+    rng = np.random.RandomState(42)
+    for code, texts in grouped.items():
+        if len(texts) < 2:
+            continue
+        for text in texts:
+            # Pick a random different text from the same code
+            candidates = [t for t in texts if t != text]
+            if not candidates:
+                candidates = texts  # fallback if all identical
+            pos = candidates[rng.randint(len(candidates))]
+            anchors.append(f"query: {text}")
+            positives.append(f"passage: {pos}")
+
+    print(f"  Built {len(anchors)} contrastive pairs from {len(grouped)} HS codes")
+
+    train_dataset = Dataset.from_dict({"anchor": anchors, "positive": positives})
+
+    loss = MultipleNegativesRankingLoss(model)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # Use smaller micro-batches with gradient accumulation on MPS to avoid OOM.
+        device = str(model.device)
+        if "mps" in device or torch.backends.mps.is_available():
+            micro_batch = min(batch_size, 4)
+            grad_accum = max(1, batch_size // micro_batch)
+        else:
+            micro_batch = batch_size
+            grad_accum = 1
+
+        training_args = SentenceTransformerTrainingArguments(
+            output_dir=tmpdir,
+            num_train_epochs=epochs,
+            per_device_train_batch_size=micro_batch,
+            gradient_accumulation_steps=grad_accum,
+            learning_rate=lr,
+            warmup_ratio=warmup,
+            fp16=False,  # MPS doesn't support fp16 training
+            logging_steps=10,
+            save_strategy="no",
+        )
+
+        trainer = SentenceTransformerTrainer(
+            model=model,
+            args=training_args,
+            train_dataset=train_dataset,
+            loss=loss,
+        )
+
+        trainer.train()
+
+    print("Fine-tuning complete.")
+    return model
+
+
+def save_artifacts(model, clf, le, embeddings_all, train_df, full_df, accuracy, report, ft_config=None):
     """Save all model artifacts."""
     # Save sentence transformer model
     model_path = MODEL_DIR / "sentence_model"
@@ -172,8 +241,15 @@ def save_artifacts(model, clf, le, embeddings_all, train_df, full_df, accuracy, 
         "report_summary": {
             "weighted_f1": report["weighted avg"]["f1-score"],
             "macro_f1": report["macro avg"]["f1-score"],
-        }
+        },
+        "fine_tuned": ft_config is not None,
     }
+    if ft_config:
+        metadata.update({
+            "ft_epochs": ft_config["epochs"],
+            "ft_batch_size": ft_config["batch_size"],
+            "ft_lr": ft_config["lr"],
+        })
     with open(MODEL_DIR / "metadata.json", "w") as f:
         json.dump(metadata, f, indent=2)
     
@@ -186,20 +262,55 @@ def save_artifacts(model, clf, le, embeddings_all, train_df, full_df, accuracy, 
     os.system(f"du -sh {MODEL_DIR}")
 
 
+def parse_args():
+    """Parse command-line arguments."""
+    import argparse
+    parser = argparse.ArgumentParser(description="Train HS code classifier")
+    parser.add_argument("--finetune", action="store_true",
+                        help="Enable contrastive fine-tuning before classifier training")
+    parser.add_argument("--ft-epochs", type=int, default=2,
+                        help="Number of fine-tuning epochs (default: 2)")
+    parser.add_argument("--ft-batch-size", type=int, default=64,
+                        help="Batch size for fine-tuning (default: 64)")
+    parser.add_argument("--ft-lr", type=float, default=2e-5,
+                        help="Learning rate for fine-tuning (default: 2e-5)")
+    parser.add_argument("--ft-warmup", type=float, default=0.1,
+                        help="Warmup ratio for fine-tuning (default: 0.1)")
+    return parser.parse_args()
+
+
 def main():
+    args = parse_args()
+
     print("=" * 60)
     print("HS Code Classifier Training")
     print("=" * 60)
-    
+
     # Load full data and choose training subset.
     df_full = load_data()
     df_train = select_training_subset(df_full)
-    
+
     # Load pre-trained multilingual model
     print("\nLoading multilingual-e5-small model...")
     model = SentenceTransformer("intfloat/multilingual-e5-small")
     print(f"Model loaded. Embedding dimension: {model.get_sentence_embedding_dimension()}")
-    
+
+    # Fine-tune if requested (before computing embeddings).
+    ft_config = None
+    if args.finetune:
+        ft_config = {
+            "epochs": args.ft_epochs,
+            "batch_size": args.ft_batch_size,
+            "lr": args.ft_lr,
+        }
+        model = finetune_model(
+            model, df_train,
+            epochs=args.ft_epochs,
+            batch_size=args.ft_batch_size,
+            lr=args.ft_lr,
+            warmup=args.ft_warmup,
+        )
+
     # e5 models should use passage prefix for index/training documents.
     df_full["text_prefixed"] = df_full["text"].apply(lambda x: f"passage: {x}")
 
@@ -209,14 +320,14 @@ def main():
     # Subset embeddings for classifier training/eval.
     train_idx = df_train.index.to_numpy()
     embeddings_train = embeddings_full[train_idx]
-    
+
     # Train classifier
     clf, le, accuracy, report, X_train, X_test, y_train, y_test = train_classifier(
         embeddings_train, df_train["hs_code"].astype(str).str.zfill(6)
     )
-    
+
     # Save everything
-    save_artifacts(model, clf, le, embeddings_full, df_train, df_full, accuracy, report)
+    save_artifacts(model, clf, le, embeddings_full, df_train, df_full, accuracy, report, ft_config=ft_config)
     
     # Print example predictions
     print("\n" + "=" * 60)

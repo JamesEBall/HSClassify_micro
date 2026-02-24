@@ -1,5 +1,5 @@
 {
-  "accuracy": 0.7721261444557477,
+  "accuracy": 0.8697863682604272,
   "n_examples": 9829,
   "n_codes": 118,
   "n_chapters": 99,
@@ -16,7 +16,11 @@
   "embedding_dim": 384,
   "classifier": "KNN (k=5, cosine distance)",
   "report_summary": {
-    "weighted_f1": 0.7702625126852769,
-    "macro_f1": 0.8106604634814989
-  }
+    "weighted_f1": 0.8692642864346408,
+    "macro_f1": 0.9294958130562785
+  },
+  "fine_tuned": true,
+  "ft_epochs": 2,
+  "ft_batch_size": 64,
+  "ft_lr": 2e-05
 }

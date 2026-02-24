@@ -29,3 +29,6 @@ Thumbs.db
 
 # Local publish staging
 .hf_dataset_release/
+
+# Benchmark output
+benchmark_results.json

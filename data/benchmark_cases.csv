@@ -1,0 +1,79 @@
+text,expected_hs_code,category,language,notes
+fresh boneless beef,020130,easy,en,common meat product
+frozen boneless bovine meat for export,020230,easy,en,frozen meat variant
+frozen shrimp 500g bag,030617,easy,en,common seafood
+whole milk 3.5% fat,040120,easy,en,standard dairy
+cheddar cheese block,040690,easy,en,common cheese
+fresh tomatoes,070200,easy,en,basic vegetable
+fresh red apples,080810,easy,en,common fruit
+bananas fresh,080300,easy,en,top traded fruit
+raw coffee beans unroasted,090111,easy,en,major commodity
+white rice 25kg bag,100630,easy,en,staple grain
+palm oil refined,151190,easy,en,major edible oil
+cane sugar raw,170199,easy,en,basic commodity
+sweet biscuits assorted,190531,easy,en,packaged food
+bottled sparkling water flavored,220210,easy,en,common beverage
+beer lager 330ml bottles,220300,easy,en,common alcohol
+scotch whisky 700ml,220830,easy,en,spirits
+crude petroleum oil,270900,easy,en,major commodity
+polyethylene pellets LDPE,390110,easy,en,common plastic resin
+car tyre 205/55R16 new,401110,easy,en,auto consumable
+cotton t-shirts mens,610910,easy,en,basic garment
+hot rolled steel coil 600mm,720839,easy,en,industrial steel
+copper cathodes 99.99% purity,740311,easy,en,refined metal
+laptop computer 14 inch,847130,easy,en,common electronics
+smartphone Samsung Galaxy,851712,easy,en,ubiquitous device
+lithium ion battery pack 48V,850760,easy,en,EV battery
+sedan car 2000cc petrol engine,870323,easy,en,standard vehicle
+wooden bedroom wardrobe,940350,easy,en,common furniture
+tea,090210,edge_case,en,very short query - ambiguous
+car parts,870899,edge_case,en,vague automotive
+medicine,300490,edge_case,en,extremely generic
+chips,854231,edge_case,en,ambiguous - food or electronics
+oil,270900,edge_case,en,highly ambiguous
+shoes,640399,edge_case,en,generic footwear
+paper,480256,edge_case,en,very generic
+plastic bags for groceries,392321,edge_case,en,everyday item
+Galaxy S24 Ultra,851712,edge_case,en,brand name only
+Nespresso coffee capsules,210111,edge_case,en,branded coffee product
+Goodyear truck tyre 315/80R22.5,401120,edge_case,en,brand + specs
+Jack Daniels Tennessee whiskey 750ml,220830,edge_case,en,brand name spirits
+Nintendo Switch gaming console,950490,edge_case,en,brand - games vs electronics
+surgical masks disposable,901890,edge_case,en,medical supply
+USB-C charging cable,854239,edge_case,en,tech accessory
+frozen cod fish fillet,030389,edge_case,en,specific fish species
+stainless steel bolts M10,730890,edge_case,en,metal hardware
+yoga pants women polyester,620462,edge_case,en,modern clothing description
+aspirin tablets 500mg retail,300490,edge_case,en,OTC pharma
+insecticide spray for mosquitoes,380891,edge_case,en,household chemical
+PET bottles preform,390760,edge_case,en,industrial plastic
+ข้าวหอมมะลิ,100630,multilingual,th,jasmine rice
+กุ้งแช่แข็ง,030617,multilingual,th,frozen shrimp
+รถยนต์ไฟฟ้า,870380,multilingual,th,electric car
+โทรศัพท์มือถือ,851712,multilingual,th,mobile phone
+ยางรถยนต์,401110,multilingual,th,car tyre
+น้ำตาลทราย,170199,multilingual,th,granulated sugar
+เสื้อยืดผ้าฝ้าย,610910,multilingual,th,cotton t-shirt
+gạo trắng,100630,multilingual,vi,white rice
+tôm đông lạnh,030617,multilingual,vi,frozen shrimp
+cà phê nhân,090111,multilingual,vi,raw coffee beans
+thép cuộn cán nóng,720839,multilingual,vi,hot rolled steel coil
+điện thoại thông minh,851712,multilingual,vi,smartphone
+xe ô tô điện,870380,multilingual,vi,electric car
+dầu thô,270900,multilingual,vi,crude oil
+笔记本电脑,847130,multilingual,zh,laptop computer
+冷冻虾,030617,multilingual,zh,frozen shrimp
+大米,100630,multilingual,zh,rice
+锂电池,850760,multilingual,zh,lithium battery
+棉质T恤,610910,multilingual,zh,cotton t-shirt
+原油,270900,multilingual,zh,crude oil
+English breakfast tea,090240,known_failure,en,black tea - code 090240 not in label space
+matcha green tea powder,090210,known_failure,en,tea variant - model often confuses with other categories
+oolong tea leaves 100g,090230,known_failure,en,semi-fermented tea - code 090230 not in label space
+chamomile herbal tea bags,121190,known_failure,en,herbal infusion - not tea chapter - not in label space
+fresh avocado,080440,known_failure,en,avocado code 080440 not in label space
+quinoa grain organic,100850,known_failure,en,quinoa code 100850 not in label space
+soy sauce 500ml bottle,210390,known_failure,en,soy sauce code 210390 not in label space
+hand sanitizer gel 70% alcohol,380894,known_failure,en,sanitizer code 380894 not in label space
+drone with 4K camera,880211,known_failure,en,UAV code not in label space
+solar panel 400W monocrystalline,854140,known_failure,en,maps to photosensitive devices - often misclassified
