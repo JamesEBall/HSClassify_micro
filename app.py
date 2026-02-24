@@ -65,13 +65,42 @@ hs_dataset = None
 classifier_training_indices = None
 
 
+def _download_hf_artifacts():
+    """Download large artifacts from HF Hub if not present locally."""
+    from huggingface_hub import hf_hub_download
+    repo_id = os.getenv("SENTENCE_MODEL_NAME", "intfloat/multilingual-e5-small")
+
+    file_map = {
+        MODEL_DIR / "embeddings.npy": "embeddings.npy",
+        MODEL_DIR / "knn_classifier.pkl": "knn_classifier.pkl",
+        MODEL_DIR / "label_encoder.pkl": "label_encoder.pkl",
+        MODEL_DIR / "metadata.json": "metadata.json",
+        DATA_DIR / "training_data.csv": "training_data.csv",
+    }
+    for local_path, repo_filename in file_map.items():
+        if not local_path.exists():
+            print(f"Downloading {repo_filename} from {repo_id}...")
+            try:
+                downloaded = hf_hub_download(
+                    repo_id=repo_id, filename=repo_filename,
+                )
+                local_path.parent.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(downloaded, local_path)
+                print(f"  -> {local_path}")
+            except Exception as e:
+                print(f"  Warning: could not download {repo_filename}: {e}")
+
+
 def load_models():
     """Load all model artifacts on startup."""
     global model, classifier, label_encoder, hs_reference, training_data, embeddings, umap_data, hs_dataset, classifier_training_indices
-    
+
     print("Loading models...")
     start = time.time()
-    
+
+    # Download large artifacts from HF Hub if missing locally.
+    _download_hf_artifacts()
+
     # Load sentence transformer:
     # prefer local bundled model, fall back to Hub model when large files are not in repo.
     local_model_dir = MODEL_DIR / "sentence_model"
@@ -91,11 +120,11 @@ def load_models():
         )
         model = SentenceTransformer(fallback_model)
         print(f"Loaded sentence model from Hugging Face Hub: {fallback_model}")
-    
+
     # Load HS code reference
     with open(DATA_DIR / "hs_codes_reference.json") as f:
         hs_reference = json.load(f)
-    
+
     # Load training data
     training_data_path = DATA_DIR / "training_data_indexed.csv"
     if not training_data_path.exists():

@@ -15,7 +15,7 @@ Classifies product descriptions into [Harmonized System (HS) codes](https://en.w
 - 🌍 **Multilingual** — example supports English, Thai, Vietnamese, and Chinese product descriptions
 - ⚡ **Real-time classification** — top-3 HS code predictions with confidence scores
 - 📊 **Latent space visualization** — interactive UMAP plot showing embedding clusters
-- 🎯 **KNN-based** — simple, interpretable nearest-neighbor approach using `paraphrase-multilingual-MiniLM-L12-v2`
+- 🎯 **KNN-based** — simple, interpretable nearest-neighbor approach using fine-tuned `multilingual-e5-small`
 - 🧾 **Official HS coverage** — training generation incorporates the [datasets/harmonized-system](https://github.com/datasets/harmonized-system) 6-digit nomenclature
 
 ## Dataset Attribution
@@ -64,10 +64,9 @@ Open [http://localhost:8000](http://localhost:8000) to classify products.
 - OCR endpoints require OS packages; `Dockerfile` installs:
   - `tesseract-ocr`
   - `poppler-utils` (for PDF conversion via `pdf2image`)
-- Model loading is resilient in hosted environments:
-  - if local `models/sentence_model` includes weights/tokenizer, it is used
-  - otherwise the app falls back to `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`
-  - optional override: set `SENTENCE_MODEL_NAME`
+- Model and data loading is resilient in hosted environments:
+  - Large artifacts (model weights, embeddings, classifier, training data) are hosted on [HF Hub](https://huggingface.co/Mead0w1ark/multilingual-e5-small-hs-codes) and downloaded automatically at startup if not present locally
+  - Set `SENTENCE_MODEL_NAME` to override the HF model repo (default: `Mead0w1ark/multilingual-e5-small-hs-codes`)
 
 ### Auto Sync (GitHub -> Hugging Face Space)
 
@@ -96,9 +95,24 @@ The script creates/updates a Dataset repo and uploads:
 - `hs_codes_reference.json`
 - Dataset card + attribution notes
 
+## Model
+
+The classifier uses [`multilingual-e5-small`](https://huggingface.co/intfloat/multilingual-e5-small) fine-tuned with contrastive learning (MultipleNegativesRankingLoss) on 9,829 curated HS-coded training pairs. Fine-tuned weights are hosted on HF Hub at [`Mead0w1ark/multilingual-e5-small-hs-codes`](https://huggingface.co/Mead0w1ark/multilingual-e5-small-hs-codes).
+
+| Metric | Before Fine-Tuning | After Fine-Tuning |
+|---|---|---|
+| Training accuracy (80/20 split) | 77.2% | **87.0%** |
+| Benchmark Top-1 (in-label-space) | 88.6% | **92.9%** |
+| Benchmark Top-3 (in-label-space) | — | **97.1%** |
+
+To fine-tune from scratch:
+```bash
+python scripts/train_model.py --finetune
+```
+
 ## How It Works
 
-1. **Embedding**: Product descriptions are encoded using `paraphrase-multilingual-MiniLM-L12-v2` (384-dim sentence embeddings)
+1. **Embedding**: Product descriptions are encoded using fine-tuned `multilingual-e5-small` (384-dim sentence embeddings)
 2. **Classification**: K-nearest neighbors (k=5) over pre-computed embeddings of HS-coded training examples
 3. **Visualization**: UMAP reduction to 2D for interactive cluster exploration via Plotly
 

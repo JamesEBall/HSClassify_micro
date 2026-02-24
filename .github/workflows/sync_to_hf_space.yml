@@ -66,28 +66,21 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # Track large files with LFS for HF
-          git lfs track "data/*.csv" "data/*.json" "models/*.npy" "models/*.pkl" "models/umap_data.json"
+          # Track large files with LFS for HF (only files still bundled)
+          git lfs track "data/*.json" "models/umap_data.json"
           git add .gitattributes
 
-          # Remove files not needed at runtime to stay under HF Space 1GB limit
+          # Remove files not needed at runtime to stay under HF Space 1GB limit.
+          # Large artifacts (sentence model, embeddings, classifier, training data)
+          # are hosted on HF Hub at $SENTENCE_MODEL_NAME and downloaded at startup.
           rm -rf scripts/
           rm -rf models/sentence_model/
+          rm -f models/embeddings.npy models/knn_classifier.pkl models/label_encoder.pkl models/metadata.json
+          rm -f data/training_data.csv data/training_data_indexed.csv
           rm -f data/hts/hts_*.csv
           rm -f data/cargo_descriptions.csv
           rm -f data/training_data.json
-          rm -f data/training_data_indexed.csv
           rm -f data/hf_real_data.csv
-
-          # Compress embeddings to float16 to halve LFS size (~460MB → ~230MB)
-          pip install -q numpy
-          python3 -c "
-          import numpy as np
-          p = 'models/embeddings.npy'
-          e = np.load(p)
-          np.save(p, e.astype(np.float16))
-          print(f'Compressed embeddings: {e.nbytes/1e6:.0f}MB -> {e.astype(np.float16).nbytes/1e6:.0f}MB')
-          "
 
           git add -A
           git commit -m "Sync from GitHub ${GITHUB_SHA}"
