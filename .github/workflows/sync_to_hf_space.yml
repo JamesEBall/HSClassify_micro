@@ -14,6 +14,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          lfs: true
+
+      - name: Pull LFS files
+        run: git lfs pull
 
       - name: Push to Hugging Face Space
         env:
@@ -28,13 +32,9 @@ jobs:
           rm -rf "${DEPLOY_DIR}"
           mkdir -p "${DEPLOY_DIR}"
 
-          # Create a clean export of the current tree and push as a history-free commit.
+          # Export the current tree (with real LFS file contents, not pointers)
           tar --exclude=.git -cf - . | (cd "${DEPLOY_DIR}" && tar -xf -)
           cd "${DEPLOY_DIR}"
-
-          # HF Space rejects certain binary artifacts unless using Xet/LFS.
-          # Keep deploy robust by stripping generated model binaries from sync payload.
-          find models -type f \( -name '*.npy' -o -name '*.pkl' \) -delete || true
 
           # Keep GitHub README clean; inject Space front matter only for HF deploy.
           if [ -f README.md ]; then
@@ -66,8 +66,8 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # Track large data files with LFS
-          git lfs track "data/*.csv" "data/*.json"
+          # Track large files with LFS for HF
+          git lfs track "data/*.csv" "data/*.json" "models/*.npy" "models/*.pkl" "models/umap_data.json"
           git add .gitattributes
           git add -A
           git commit -m "Sync from GitHub ${GITHUB_SHA}"
