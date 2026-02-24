@@ -69,6 +69,16 @@ jobs:
           # Track large files with LFS for HF
           git lfs track "data/*.csv" "data/*.json" "models/*.npy" "models/*.pkl" "models/umap_data.json"
           git add .gitattributes
+
+          # Remove files not needed at runtime to stay under HF Space 1GB limit
+          rm -rf scripts/
+          rm -f data/hts/hts_*.csv
+          rm -f data/cargo_descriptions.csv
+          rm -f data/training_data.json
+          rm -f data/training_data_indexed.csv
+          rm -f data/hf_real_data.csv
+          rm -f data/hs_codes_reference.json
+
           git add -A
           git commit -m "Sync from GitHub ${GITHUB_SHA}"
 
