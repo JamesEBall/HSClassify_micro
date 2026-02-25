@@ -13,11 +13,12 @@ FastAPI backend with:
 
 import json
 import os
-import time
-import pickle
 import re
 import shutil
 import tempfile
+import threading
+import time
+import pickle
 import uuid
 from pathlib import Path
 
@@ -61,6 +62,7 @@ hs_reference = None
 training_data = None
 embeddings = None
 umap_data = None
+umap_ready = False
 hs_dataset = None
 classifier_training_indices = None
 
@@ -75,6 +77,7 @@ def _download_hf_artifacts():
         MODEL_DIR / "knn_classifier.pkl": "knn_classifier.pkl",
         MODEL_DIR / "label_encoder.pkl": "label_encoder.pkl",
         MODEL_DIR / "metadata.json": "metadata.json",
+        MODEL_DIR / "umap_data.json": "umap_data.json",
         DATA_DIR / "training_data.csv": "training_data.csv",
     }
     for local_path, repo_filename in file_map.items():
@@ -246,78 +249,90 @@ def load_models():
     # Load HS dataset (official harmonized-system data)
     hs_dataset = get_dataset()
     
-    # Load UMAP data from cache (or compute if needed)
-    cache_path = MODEL_DIR / "umap_data.json"
-    if cache_path.exists():
-        with open(cache_path, encoding="utf-8") as f:
-            cached = json.load(f)
-        has_category_fields = (
-            isinstance(cached, list)
-            and len(cached) > 0
-            and "chapter_name" in cached[0]
-        )
-        if isinstance(cached, list) and len(cached) == len(training_data) and has_category_fields:
-            umap_data = cached
-            print(f"Loaded cached UMAP data: {len(umap_data)} points")
-        else:
-            print(
-                f"Cached UMAP size mismatch (cache={len(cached)}, data={len(training_data)}). "
-                "Recomputing UMAP projection..."
-            )
-            umap_data = None
-    else:
-        umap_data = None
+    # UMAP data is loaded/computed in a background thread so the server
+    # can start immediately and pass the HF Space health check.
+    umap_data = []
 
-    if umap_data is None:
-        print("Computing UMAP projection...")
-        try:
-            import umap
-            # Higher n_neighbors (30) helps non-English points connect to
-            # their English semantic neighbors instead of forming isolated
-            # language clusters.  min_dist=0.15 gives slightly more spread.
-            reducer = umap.UMAP(
-                n_neighbors=30,
-                min_dist=0.15,
-                n_components=2,
-                metric='cosine',
-                random_state=42
-            )
-            umap_coords = reducer.fit_transform(embeddings)
-            
-            umap_data = []
-            for i, row in training_data.iterrows():
-                hs_code = str(row["hs_code"]).zfill(6)
-                chapter = row["hs_chapter"]
-                chapter_name = str(row.get("hs_chapter_name", "")).strip()
-                if not chapter_name or re.match(r"^HS\s\d{2}$", chapter_name):
-                    chapter_name = str(chapter).split(";")[0].strip()
-                desc = hs_reference.get(hs_code, {}).get("desc", "Unknown")
-                umap_data.append({
-                    "x": float(umap_coords[i, 0]),
-                    "y": float(umap_coords[i, 1]),
-                    "text": row["text"][:80],
-                    "hs_code": hs_code,
-                    "chapter": chapter,
-                    "chapter_name": chapter_name,
-                    "hs_desc": desc,
-                    "language": row["language"]
-                })
-            
-            with open(cache_path, "w", encoding="utf-8") as f:
-                json.dump(umap_data, f, ensure_ascii=False)
-            
-            print(f"UMAP projection computed for {len(umap_data)} points")
-        except Exception as e:
-            print(f"UMAP computation failed: {e}")
-            umap_data = []
-    
     elapsed = time.time() - start
     print(f"All models loaded in {elapsed:.1f}s")
+
+
+def _compute_umap_background():
+    """Load UMAP data from cache or compute in background.
+
+    Sets the global ``umap_data`` list and ``umap_ready`` flag when done.
+    """
+    global umap_data, umap_ready
+
+    cache_path = MODEL_DIR / "umap_data.json"
+    if cache_path.exists():
+        try:
+            with open(cache_path, encoding="utf-8") as f:
+                cached = json.load(f)
+            has_category_fields = (
+                isinstance(cached, list)
+                and len(cached) > 0
+                and "chapter_name" in cached[0]
+            )
+            if isinstance(cached, list) and len(cached) == len(training_data) and has_category_fields:
+                umap_data = cached
+                umap_ready = True
+                print(f"Loaded cached UMAP data: {len(umap_data)} points")
+                return
+            else:
+                print(
+                    f"Cached UMAP size mismatch (cache={len(cached)}, data={len(training_data)}). "
+                    "Recomputing UMAP projection..."
+                )
+        except Exception as e:
+            print(f"Warning: could not read UMAP cache: {e}")
+
+    print("Computing UMAP projection (background)...")
+    try:
+        import umap
+        reducer = umap.UMAP(
+            n_neighbors=30,
+            min_dist=0.15,
+            n_components=2,
+            metric='cosine',
+            random_state=42,
+        )
+        umap_coords = reducer.fit_transform(embeddings)
+
+        points = []
+        for i, row in training_data.iterrows():
+            hs_code = str(row["hs_code"]).zfill(6)
+            chapter = row["hs_chapter"]
+            chapter_name = str(row.get("hs_chapter_name", "")).strip()
+            if not chapter_name or re.match(r"^HS\s\d{2}$", chapter_name):
+                chapter_name = str(chapter).split(";")[0].strip()
+            desc = hs_reference.get(hs_code, {}).get("desc", "Unknown")
+            points.append({
+                "x": float(umap_coords[i, 0]),
+                "y": float(umap_coords[i, 1]),
+                "text": row["text"][:80],
+                "hs_code": hs_code,
+                "chapter": chapter,
+                "chapter_name": chapter_name,
+                "hs_desc": desc,
+                "language": row["language"],
+            })
+
+        with open(cache_path, "w", encoding="utf-8") as f:
+            json.dump(points, f, ensure_ascii=False)
+
+        umap_data = points
+        umap_ready = True
+        print(f"UMAP projection computed for {len(umap_data)} points")
+    except Exception as e:
+        print(f"UMAP computation failed: {e}")
+        umap_ready = True  # mark ready so endpoints stop saying "computing"
 
 
 @app.on_event("startup")
 async def startup():
     load_models()
+    threading.Thread(target=_compute_umap_background, daemon=True).start()
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -602,6 +617,8 @@ async def get_visualization_data(request: Request):
                 points = json.load(f)
 
     if not points:
+        if not umap_ready:
+            return JSONResponse({"points": [], "computing": True})
         return JSONResponse({"points": [], "error": "No UMAP data available"})
 
     total = len(points)
@@ -632,6 +649,8 @@ async def get_visualization_density():
             with open(cache_path, encoding="utf-8") as f:
                 points = json.load(f)
     if not points:
+        if not umap_ready:
+            return JSONResponse({"chapters": {}, "computing": True})
         return JSONResponse({"error": "No data"})
 
     by_chapter: dict[str, dict[str, list]] = {}
@@ -713,6 +732,8 @@ async def embed_query(request: Request):
             "neighbors": neighbors,
         })
     
+    if not umap_ready:
+        return JSONResponse({"error": "UMAP data is still computing", "computing": True})
     return JSONResponse({"error": "No UMAP data for projection"})
 
 
@@ -724,6 +745,7 @@ async def health():
         "model_loaded": model is not None,
         "hs_dataset_loaded": hs_dataset._loaded if hs_dataset else False,
         "hs_codes_count": len(hs_dataset.subheadings) if hs_dataset else 0,
+        "umap_ready": umap_ready,
     }
 
 
