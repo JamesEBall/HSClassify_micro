@@ -86,5 +86,5 @@ jobs:
           git add -A
           git commit -m "Sync from GitHub ${GITHUB_SHA}"
 
-          git remote add hf "https://oauth2:${HF_TOKEN}@huggingface.co/spaces/Troglobyte/MicroHS"
+          git remote add hf "https://oauth2:${HF_TOKEN}@huggingface.co/spaces/Mead0w1ark/MicroHS"
           git push --force hf main
