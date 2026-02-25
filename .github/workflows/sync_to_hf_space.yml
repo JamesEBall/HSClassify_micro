@@ -75,7 +75,7 @@ jobs:
           # are hosted on HF Hub at $SENTENCE_MODEL_NAME and downloaded at startup.
           rm -rf scripts/
           rm -rf models/sentence_model/
-          rm -f models/embeddings.npy models/knn_classifier.pkl models/label_encoder.pkl models/metadata.json
+          rm -f models/embeddings.npy models/knn_classifier.pkl models/label_encoder.pkl models/metadata.json models/umap_data.json
           touch models/.gitkeep
           rm -f data/training_data.csv data/training_data_indexed.csv
           rm -f data/hts/hts_*.csv
