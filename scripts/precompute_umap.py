@@ -66,7 +66,7 @@ def main():
     print("Computing UMAP projection...")
     reducer = umap.UMAP(
         n_neighbors=30,
-        min_dist=0.15,
+        min_dist=0.0,
         n_components=2,
         metric="cosine",
         random_state=42,
