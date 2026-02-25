@@ -70,7 +70,7 @@ classifier_training_indices = None
 def _download_hf_artifacts():
     """Download large artifacts from HF Hub if not present locally."""
     from huggingface_hub import hf_hub_download
-    repo_id = os.getenv("SENTENCE_MODEL_NAME", "intfloat/multilingual-e5-small")
+    repo_id = os.getenv("HF_ARTIFACT_REPO", "Mead0w1ark/multilingual-e5-small-hs-codes")
 
     file_map = {
         MODEL_DIR / "embeddings.npy": "embeddings.npy",

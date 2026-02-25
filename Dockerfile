@@ -5,7 +5,8 @@ WORKDIR /app
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    SENTENCE_MODEL_NAME=Mead0w1ark/multilingual-e5-small-hs-codes
+    SENTENCE_MODEL_NAME=intfloat/multilingual-e5-small \
+    HF_ARTIFACT_REPO=Mead0w1ark/multilingual-e5-small-hs-codes
 
 # System deps for OCR endpoints:
 # - tesseract for image OCR
